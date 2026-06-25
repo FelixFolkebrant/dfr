@@ -159,6 +159,14 @@ In product language, this should be described as:
 - VS Code Webview View for the sidebar
 - VS Code Webview Panel or custom editor-style panel for the main diff viewer
 
+### Webview UI
+
+- React for sidebar and diff-panel webview views.
+- Tailwind CSS for webview styling.
+- `esbuild` for small, explicit webview bundles.
+- Keep webview code as UI-only code. It should render state and send messages; it should not discover repositories, run Git, or parse patches.
+- Prefer simple local build scripts over a larger app framework until the UI needs routing, dev server behavior, or heavier asset handling.
+
 ### Git integration
 
 Use a hybrid approach:
@@ -189,8 +197,7 @@ The extension should not depend entirely on one or the other. Native VS Code Git
 
 - `@pierre/trees` (https://trees.software/docs) for the changed-file tree.
 - `@pierre/diffs` (https://diffs.com/docs) for rendering diffs.
-- React or another lightweight webview UI setup if useful.
-- Vite or similar bundler for webview assets.
+- React components should wrap these libraries behind small local components so the rest of the webview does not depend on third-party API details.
 
 ### Optional supporting tools
 
@@ -199,7 +206,14 @@ These are useful but not mandatory:
 - Zod or similar for validating webview messages.
 - Vitest/Jest for unit tests.
 - Git fixture repositories for integration-style tests.
-- ESLint/Prettier for project hygiene.
+- Playwright or VS Code extension tests once UI behavior becomes complex enough to justify browser/extension-host coverage.
+
+### Project hygiene
+
+- Biome is the source of truth for formatting and linting.
+- `pnpm check` is the primary local and hook validation command.
+- Keep checks deterministic and runnable from the repository root.
+- Do not add overlapping format/lint tools unless Biome cannot cover a concrete need.
 
 ## Biggest architectural decisions
 
@@ -279,8 +293,21 @@ The webview should own:
 - selected file
 - expanded folders
 - layout toggles
+- message dispatch back to the extension host
 
-### 6. Keep the first version single-repository focused
+### 6. React/Tailwind webviews stay thin
+
+React is the chosen webview UI layer, but it should not become the application architecture by itself.
+
+Preferred direction:
+
+- keep Git and filesystem behavior in the extension host
+- keep shared message types explicit
+- keep Tailwind usage local to webview surfaces
+- avoid global state libraries until there is real cross-view state complexity
+- build small components around stable product concepts such as branch selectors, file tree, summary, and diff viewer
+
+### 7. Keep the first version single-repository focused
 
 Multi-root support matters, but the MVP can stay simple.
 
@@ -290,7 +317,7 @@ Preferred behavior:
 - if the active editor belongs to a Git repository, use that one
 - if multiple repositories are open and the active editor does not clarify, ask the user to choose
 
-### 7. Do not create a new SCM provider
+### 8. Do not create a new SCM provider
 
 The extension is a review surface, not a replacement for VS Code’s built-in Source Control view.
 
@@ -409,10 +436,13 @@ src/
     DiffPanel.ts
     protocol.ts
 
-webview-ui/
+webview/
   sidebar/
   diff-panel/
   shared/
+
+scripts/
+  build-webviews.mjs
 ```
 
 This should evolve as the project gets built.
@@ -427,39 +457,40 @@ This is intentionally lighter than a full implementation breakdown.
 2. Add command to open Branch Diff Review.
 3. Add placeholder sidebar webview.
 4. Add placeholder diff panel webview.
-5. Add basic webview build setup.
+5. Add React/Tailwind webview build setup.
+6. Add Biome formatting/lint checks.
 
 ### P0 — Git backend
 
-6. Create internal `GitBackend` interface.
-7. Add VS Code Git API integration for repository/current branch discovery.
-8. Add Git CLI runner.
-9. Resolve default base branch.
-10. Compute merge-base comparison summary.
-11. Parse changed files, statuses, renames, additions, and deletions.
-12. Load a patch for one selected file.
+7. Create internal `GitBackend` interface.
+8. Add VS Code Git API integration for repository/current branch discovery.
+9. Add Git CLI runner.
+10. Resolve default base branch.
+11. Compute merge-base comparison summary.
+12. Parse changed files, statuses, renames, additions, and deletions.
+13. Load a patch for one selected file.
 
 ### P0 — Sidebar UX
 
-13. Build branch selector UI.
-14. Mark current branch with `•`.
-15. Show diff summary counts.
-16. Render changed files using `@pierre/trees`.
-17. Send selected file changes to the extension host.
+14. Build branch selector UI.
+15. Mark current branch with `•`.
+16. Show diff summary counts.
+17. Render changed files using `@pierre/trees`.
+18. Send selected file changes to the extension host.
 
 ### P0 — Diff UX
 
-18. Spike `@pierre/diffs` inside a VS Code webview.
-19. Render selected file patch in the main panel.
-20. Handle added, modified, deleted, renamed, binary, and too-large files.
-21. Add refresh behavior.
-22. Add useful empty/error states.
+19. Spike `@pierre/diffs` inside a React VS Code webview.
+20. Render selected file patch in the main panel.
+21. Handle added, modified, deleted, renamed, binary, and too-large files.
+22. Add refresh behavior.
+23. Add useful empty/error states.
 
 ### P0 — Ship MVP
 
-23. Add README with usage instructions.
-24. Add basic tests around Git parsing.
-25. Package local `.vsix` for manual testing.
+24. Add README with usage instructions.
+25. Add basic tests around Git parsing.
+26. Package local `.vsix` for manual testing.
 
 ### P1 — After MVP
 
