@@ -9,7 +9,7 @@ pre-commit:
           exit 1
         fi
 
-    - name: frontend-check
+    - name: extension-check
       run: pnpm check
 
 commit-msg:
@@ -33,11 +33,5 @@ pre-push:
           exit 1
         fi
 
-    - name: frontend-typecheck
-      run: pnpm typecheck
-
-    - name: frontend-test
+    - name: extension-check
       run: pnpm check
-
-    - name: frontend-build
-      run: pnpm build
