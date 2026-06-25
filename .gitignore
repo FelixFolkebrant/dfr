@@ -1,0 +1,8 @@
+docs/local
+.vscode
+backend/src/nearer_by_store/data/products_raw.json
+frontend/public/data/products.json
+
+
+# APM dependencies
+apm_modules/

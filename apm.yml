@@ -1,0 +1,14 @@
+name: tsup
+version: 1.0.0
+description: APM project for tsup
+author: Felix Folkebrant
+targets:
+  - codex
+
+dependencies:
+  apm: 
+    - https://github.com/DietrichGebert/ponytail
+    - https://github.com/juliusbrussee/caveman
+  mcp: []
+includes: auto
+scripts: {}

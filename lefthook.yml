@@ -1,0 +1,24 @@
+pre-commit:
+  parallel: true
+  jobs:
+    - name: enforce-branch-name
+      run: |
+        branch=$(git branch --show-current)
+        if ! printf '%s' "$branch" | grep -qE '^[a-zA-Z0-9._-]+/IS-[0-9]{3}/[0-9]+$'; then
+          echo "Commit rejected: branch '$branch' must match <name>/IS-<3-digit-issue-number>/<revision>"
+          exit 1
+        fi
+
+    - name: frontend-check
+      run: pnpm --dir frontend check
+
+commit-msg:
+  jobs:
+    - name: enforce-issue-prefix
+      run: |
+        message=$(head -n 1 "{1}")
+        if ! printf '%s' "$message" | grep -qE '^(fixup! )?IS-[0-9]{3}: .+'; then
+          echo "Commit rejected: message must match IS-<3-digit-issue-number>: <description>"
+          exit 1
+        fi
+

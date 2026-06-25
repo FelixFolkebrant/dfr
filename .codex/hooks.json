@@ -1,0 +1,87 @@
+{
+  "hooks": {
+    "sessionStart": [
+      {
+        "type": "command",
+        "bash": "node \".codex/hooks/ponytail/hooks/ponytail-activate.js\"",
+        "powershell": "node \".codex/hooks/ponytail/hooks/ponytail-activate.js\"",
+        "timeoutSec": 5,
+        "_apm_source": "ponytail"
+      }
+    ],
+    "userPromptSubmitted": [
+      {
+        "type": "command",
+        "bash": "node \".codex/hooks/ponytail/hooks/ponytail-mode-tracker.js\"",
+        "powershell": "node \".codex/hooks/ponytail/hooks/ponytail-mode-tracker.js\"",
+        "timeoutSec": 5,
+        "_apm_source": "ponytail"
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \".codex/hooks/ponytail/hooks/ponytail-activate.js\"; exit 0",
+            "commandWindows": "if (Get-Command node -ErrorAction SilentlyContinue) { node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\ponytail-activate.js\" }",
+            "timeout": 5,
+            "statusMessage": "Loading ponytail mode..."
+          }
+        ],
+        "_apm_source": "ponytail"
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \".codex/hooks/caveman/src/hooks/caveman-activate.js\"",
+            "timeout": 5,
+            "statusMessage": "Loading caveman mode..."
+          }
+        ],
+        "_apm_source": "caveman"
+      }
+    ],
+    "SubagentStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \".codex/hooks/ponytail/hooks/ponytail-subagent.js\"; exit 0",
+            "commandWindows": "if (Get-Command node -ErrorAction SilentlyContinue) { node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\ponytail-subagent.js\" }",
+            "timeout": 5,
+            "statusMessage": "Loading ponytail mode..."
+          }
+        ],
+        "_apm_source": "ponytail"
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \".codex/hooks/ponytail/hooks/ponytail-mode-tracker.js\"; exit 0",
+            "commandWindows": "if (Get-Command node -ErrorAction SilentlyContinue) { node \"$env:CLAUDE_PLUGIN_ROOT\\hooks\\ponytail-mode-tracker.js\" }",
+            "timeout": 5,
+            "statusMessage": "Tracking ponytail mode..."
+          }
+        ],
+        "_apm_source": "ponytail"
+      },
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node \".codex/hooks/caveman/src/hooks/caveman-mode-tracker.js\"",
+            "timeout": 5,
+            "statusMessage": "Tracking caveman mode..."
+          }
+        ],
+        "_apm_source": "caveman"
+      }
+    ]
+  }
+}
