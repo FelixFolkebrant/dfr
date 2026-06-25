@@ -1,0 +1,54 @@
+@import "tailwindcss";
+@source "./main.tsx";
+
+:root {
+  color-scheme: light dark;
+  font-family: var(--vscode-font-family);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--vscode-editor-background);
+  color: var(--vscode-editor-foreground);
+}
+
+@layer components {
+  .panel {
+    border: 1px solid var(--vscode-panel-border);
+    border-radius: 8px;
+    background: var(--vscode-editor-background);
+    padding: 16px;
+  }
+
+  .eyebrow {
+    margin: 0 0 6px;
+    color: var(--vscode-descriptionForeground);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .lede,
+  .copy {
+    margin: 0;
+    color: var(--vscode-descriptionForeground);
+    line-height: 1.6;
+  }
+
+  .pill {
+    border-radius: 999px;
+    background: var(--vscode-button-secondaryBackground);
+    color: var(--vscode-button-secondaryForeground);
+    padding: 8px 12px;
+  }
+
+  .pill-muted {
+    background: var(--vscode-editorWidget-background);
+    color: var(--vscode-descriptionForeground);
+  }
+}
