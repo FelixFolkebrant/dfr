@@ -10,7 +10,7 @@ pre-commit:
         fi
 
     - name: frontend-check
-      run: pnpm --dir frontend check
+      run: pnpm check
 
 commit-msg:
   jobs:
@@ -22,3 +22,22 @@ commit-msg:
           exit 1
         fi
 
+pre-push:
+  parallel: true
+  jobs:
+    - name: enforce-branch-name
+      run: |
+        branch=$(git branch --show-current)
+        if ! printf '%s' "$branch" | grep -qE '^[a-zA-Z0-9._-]+/IS-[0-9]{3}/[0-9]+$'; then
+          echo "Push rejected: branch '$branch' must match <name>/IS-<3-digit-issue-number>/<revision>"
+          exit 1
+        fi
+
+    - name: frontend-typecheck
+      run: pnpm typecheck
+
+    - name: frontend-test
+      run: pnpm check
+
+    - name: frontend-build
+      run: pnpm build
