@@ -38,7 +38,8 @@
       "branchDiffReview": [
         {
           "id": "branchDiffReview.sidebar",
-          "name": "Branch Diff"
+          "name": "Branch Diff",
+          "type": "webview"
         }
       ]
     }
