@@ -1,0 +1,58 @@
+{
+  "name": "tsup",
+  "displayName": "Branch Diff Review",
+  "description": "Local branch diff review for VS Code.",
+  "version": "0.0.1",
+  "private": true,
+  "publisher": "felixfolkebrant",
+  "license": "UNLICENSED",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:branchDiffReview.open",
+    "onView:branchDiffReview.sidebar"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "branchDiffReview.open",
+        "title": "Open Branch Diff Review",
+        "category": "Branch Diff Review"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "branchDiffReview",
+          "title": "Branch Diff",
+          "icon": "media/activity.svg"
+        }
+      ]
+    },
+    "views": {
+      "branchDiffReview": [
+        {
+          "id": "branchDiffReview.sidebar",
+          "name": "Branch Diff"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "pnpm typecheck && pnpm build",
+    "clean": "rm -rf dist",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "vscode:prepublish": "pnpm build"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.12",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.8.3"
+  }
+}
