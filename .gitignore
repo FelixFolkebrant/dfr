@@ -1,0 +1,8 @@
+docs/local
+.vscode
+.agents/
+.codex
+
+
+# APM dependencies
+apm_modules/
