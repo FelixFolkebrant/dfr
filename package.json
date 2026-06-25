@@ -47,8 +47,10 @@
     "build": "pnpm build:extension && pnpm build:webview",
     "build:extension": "tsc -p tsconfig.json",
     "build:webview": "node scripts/build-webviews.mjs",
-    "check": "pnpm typecheck && pnpm build",
+    "check": "pnpm typecheck && pnpm lint && pnpm build",
     "clean": "rm -rf dist",
+    "format": "biome format --write .",
+    "lint": "biome check .",
     "typecheck": "pnpm typecheck:extension && pnpm typecheck:webview",
     "typecheck:extension": "tsc -p tsconfig.json --noEmit",
     "typecheck:webview": "tsc -p tsconfig.webview.json --noEmit",
@@ -59,6 +61,7 @@
     "react-dom": "^19.2.7"
   },
   "devDependencies": {
+    "@biomejs/biome": "^2.5.1",
     "@tailwindcss/cli": "^4.3.1",
     "@types/node": "^24.0.12",
     "@types/react": "^19.2.17",
