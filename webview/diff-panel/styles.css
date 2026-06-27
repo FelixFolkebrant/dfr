@@ -13,42 +13,57 @@
 body {
   margin: 0;
   min-height: 100vh;
+  overflow: hidden;
   background: var(--vscode-editor-background);
   color: var(--vscode-editor-foreground);
 }
 
-@layer components {
-  .panel {
-    border: 1px solid var(--vscode-panel-border);
-    border-radius: 8px;
-    background: var(--vscode-editor-background);
-    padding: 16px;
-  }
+.diff-shell {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  height: 100vh;
+}
 
-  .eyebrow {
-    margin: 0 0 6px;
-    color: var(--vscode-descriptionForeground);
-    font-size: 12px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-  }
+.diff-scroll {
+  overflow: auto;
+}
 
-  .lede,
-  .copy {
-    margin: 0;
-    color: var(--vscode-descriptionForeground);
-    line-height: 1.6;
-  }
+.diff-content {
+  min-width: min-content;
+  padding: 16px;
+}
 
-  .pill {
-    border-radius: 999px;
-    background: var(--vscode-button-secondaryBackground);
-    color: var(--vscode-button-secondaryForeground);
-    padding: 8px 12px;
-  }
+.review-header {
+  border-bottom: 1px solid var(--vscode-panel-border);
+  padding: 12px 16px;
+}
 
-  .pill-muted {
-    background: var(--vscode-editorWidget-background);
-    color: var(--vscode-descriptionForeground);
-  }
+.review-header p,
+.review-header h1 {
+  margin: 0;
+}
+
+.review-header p {
+  color: var(--vscode-descriptionForeground);
+  font-size: 12px;
+}
+
+.review-header h1 {
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.message-shell {
+  min-height: 100vh;
+}
+
+.panel-message {
+  margin: 24px;
+  border: 1px dashed var(--vscode-panel-border);
+  border-radius: 8px;
+  padding: 24px;
+  color: var(--vscode-descriptionForeground);
+  text-align: center;
 }

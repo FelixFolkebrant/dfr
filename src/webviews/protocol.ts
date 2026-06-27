@@ -37,3 +37,31 @@ export type SidebarToExtensionMessage =
   | { type: "ready" }
   | { type: "selectBranches"; baseRef: string; headRef: string }
   | { type: "selectFile"; comparisonId: string; path: string };
+
+export interface DiffPanelSelection {
+  comparisonId: string;
+  baseRef: string;
+  headRef: string;
+  path: string;
+  oldPath?: string;
+}
+
+export type DiffPanelState =
+  | { status: "idle" }
+  | { status: "noSelection"; baseRef: string; headRef: string }
+  | ({ status: "loading" } & DiffPanelSelection)
+  | ({ status: "ready"; patch: string } & DiffPanelSelection)
+  | ({ status: "binary" } & DiffPanelSelection)
+  | ({
+      status: "tooLarge";
+      bytes: number;
+      maxBytes: number;
+    } & DiffPanelSelection)
+  | ({ status: "error"; message: string } & DiffPanelSelection);
+
+export type ExtensionToDiffPanelMessage = {
+  type: "state";
+  state: DiffPanelState;
+};
+
+export type DiffPanelToExtensionMessage = { type: "ready" };

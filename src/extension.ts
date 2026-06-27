@@ -1,7 +1,7 @@
 import * as vscode from "vscode";
 import { getRepositoryContext } from "./git/getRepositoryContext";
 import { NativeGitBackend } from "./git/NativeGitBackend";
-import { showBranchDiffPanel } from "./panel";
+import { showBranchDiffPanel, updateBranchDiffPanel } from "./panel";
 import { BranchDiffSidebarProvider } from "./sidebar";
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -22,6 +22,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const sidebarProvider = new BranchDiffSidebarProvider(
     context.extensionUri,
     gitBackend,
+    updateBranchDiffPanel,
   );
 
   context.subscriptions.push(

@@ -68,6 +68,7 @@
     "vscode:prepublish": "pnpm build"
   },
   "dependencies": {
+    "@pierre/diffs": "1.2.11",
     "@pierre/trees": "1.0.0-beta.4",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
