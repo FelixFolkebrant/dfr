@@ -21,7 +21,11 @@ interface SidebarSelection {
 export type SidebarState =
   | { status: "idle" }
   | ({ status: "loading" } & SidebarSelection)
-  | ({ status: "ready"; comparison: SidebarComparison } & SidebarSelection)
+  | ({
+      status: "ready";
+      comparison: SidebarComparison;
+      selectedPath?: string;
+    } & SidebarSelection)
   | ({ status: "error"; message: string } & SidebarSelection);
 
 export type ExtensionToSidebarMessage = {
@@ -31,4 +35,5 @@ export type ExtensionToSidebarMessage = {
 
 export type SidebarToExtensionMessage =
   | { type: "ready" }
-  | { type: "selectBranches"; baseRef: string; headRef: string };
+  | { type: "selectBranches"; baseRef: string; headRef: string }
+  | { type: "selectFile"; comparisonId: string; path: string };

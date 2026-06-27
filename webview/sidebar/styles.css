@@ -87,4 +87,15 @@ body {
   .deletions {
     color: var(--vscode-gitDecoration-deletedResourceForeground);
   }
+
+  .changed-file-tree {
+    display: block;
+    max-width: 100%;
+    --trees-border-color-override: var(
+      --vscode-sideBar-border,
+      var(--vscode-panel-border)
+    );
+    --trees-fg-override: var(--vscode-sideBar-foreground);
+    --trees-selected-bg-override: var(--vscode-list-activeSelectionBackground);
+  }
 }

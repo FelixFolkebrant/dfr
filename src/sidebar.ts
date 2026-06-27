@@ -59,6 +59,11 @@ export class BranchDiffSidebarProvider implements vscode.WebviewViewProvider {
       return;
     }
 
+    if (message.type === "selectFile") {
+      await this.controller.selectFile(message.comparisonId, message.path);
+      return;
+    }
+
     if (message.type !== "selectBranches") {
       return;
     }
@@ -86,6 +91,15 @@ function isSidebarMessage(
 
   if (message.type === "ready") {
     return true;
+  }
+
+  if (message.type === "selectFile") {
+    return (
+      "comparisonId" in message &&
+      typeof message.comparisonId === "string" &&
+      "path" in message &&
+      typeof message.path === "string"
+    );
   }
 
   return (
