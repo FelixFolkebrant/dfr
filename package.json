@@ -12,8 +12,21 @@
   "categories": [
     "Other"
   ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
+    "configuration": {
+      "title": "Branch Diff Review",
+      "properties": {
+        "branchDiffReview.defaultBaseBranch": {
+          "type": "string",
+          "default": "",
+          "description": "Preferred base branch. Falls back to main, master, origin/main, then origin/master when empty or unavailable."
+        }
+      }
+    },
     "commands": [
       {
         "command": "branchDiffReview.open",
