@@ -2,6 +2,8 @@ import type {
   ComparisonInput,
   ComparisonSummary,
   DiffFileSummary,
+  FilePatchInput,
+  FilePatchResult,
   FileStatus,
 } from "./GitBackend";
 import type { GitRunner } from "./GitRunner";
@@ -61,6 +63,40 @@ export class DiffService {
     } catch (error) {
       throw new Error(
         `Could not compare ${input.headRef} with merge base ${mergeBase}: ${errorMessage(error)}`,
+      );
+    }
+  }
+
+  public async getFilePatch(input: FilePatchInput): Promise<FilePatchResult> {
+    const mergeBase = await this.findMergeBase(input);
+    const paths = input.oldPath ? [input.oldPath, input.path] : [input.path];
+
+    try {
+      const { stdout } = await this.gitRunner.run(input.repoRoot, [
+        "diff",
+        "--find-renames",
+        "--no-ext-diff",
+        "--no-textconv",
+        "--unified=80",
+        mergeBase,
+        input.headRef,
+        "--",
+        ...paths,
+      ]);
+      if (!stdout) {
+        throw new Error(`Git returned no patch for ${input.path}`);
+      }
+
+      const isBinary = /^Binary files .+ differ$/m.test(stdout);
+      return {
+        path: input.path,
+        ...(input.oldPath ? { oldPath: input.oldPath } : {}),
+        patch: isBinary ? undefined : stdout,
+        isBinary,
+      };
+    } catch (error) {
+      throw new Error(
+        `Could not load the patch for ${input.path} between merge base ${mergeBase} and ${input.headRef}: ${errorMessage(error)}`,
       );
     }
   }

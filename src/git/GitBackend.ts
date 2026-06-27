@@ -55,6 +55,18 @@ export interface ComparisonSummary {
   };
 }
 
+export interface FilePatchInput extends ComparisonInput {
+  path: string;
+  oldPath?: string;
+}
+
+export interface FilePatchResult {
+  path: string;
+  oldPath?: string;
+  patch?: string;
+  isBinary: boolean;
+}
+
 export interface GitBackend {
   getRepositories(): Promise<Repository[]>;
   chooseRepository(repositories: Repository[]): Promise<Repository | undefined>;
@@ -62,4 +74,5 @@ export interface GitBackend {
   getBranches(repository: Repository): Promise<BranchRef[]>;
   getDefaultBase(branches: BranchRef[]): Promise<BranchRef>;
   getComparisonSummary(input: ComparisonInput): Promise<ComparisonSummary>;
+  getFilePatch(input: FilePatchInput): Promise<FilePatchResult>;
 }

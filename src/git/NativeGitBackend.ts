@@ -5,6 +5,8 @@ import type {
   BranchRef,
   ComparisonInput,
   ComparisonSummary,
+  FilePatchInput,
+  FilePatchResult,
   GitBackend,
   Repository,
 } from "./GitBackend";
@@ -154,6 +156,10 @@ export class NativeGitBackend implements GitBackend {
     input: ComparisonInput,
   ): Promise<ComparisonSummary> {
     return this.diffService.getComparisonSummary(input);
+  }
+
+  public async getFilePatch(input: FilePatchInput): Promise<FilePatchResult> {
+    return this.diffService.getFilePatch(input);
   }
 
   private async getApi(): Promise<GitApi> {
