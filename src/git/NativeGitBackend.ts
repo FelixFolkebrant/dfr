@@ -1,6 +1,13 @@
 import * as vscode from "vscode";
 
-import type { BranchRef, GitBackend, Repository } from "./GitBackend";
+import { DiffService } from "./DiffService";
+import type {
+  BranchRef,
+  ComparisonInput,
+  ComparisonSummary,
+  GitBackend,
+  Repository,
+} from "./GitBackend";
 import { GitRunner } from "./GitRunner";
 
 interface GitRef {
@@ -35,6 +42,7 @@ const defaultBaseCandidates = [
 
 export class NativeGitBackend implements GitBackend {
   private readonly gitRunner = new GitRunner();
+  private readonly diffService = new DiffService(this.gitRunner);
 
   public async getRepositories(): Promise<Repository[]> {
     return (await this.getApi()).repositories.map(({ rootUri }) => ({
@@ -140,6 +148,12 @@ export class NativeGitBackend implements GitBackend {
     throw new Error(
       "No default base branch was found. Configure branchDiffReview.defaultBaseBranch.",
     );
+  }
+
+  public async getComparisonSummary(
+    input: ComparisonInput,
+  ): Promise<ComparisonSummary> {
+    return this.diffService.getComparisonSummary(input);
   }
 
   private async getApi(): Promise<GitApi> {
