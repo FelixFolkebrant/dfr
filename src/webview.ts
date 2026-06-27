@@ -35,16 +35,30 @@ export function renderWebviewDocument(
     <link href="${styleUri}" rel="stylesheet" />
   </head>
   <body data-surface="${surface}">
-    <div id="app"></div>
-    <script nonce="${nonce}" type="module" src="${scriptUri}"></script>
+    <div id="app">
+      <p role="status">Starting ${titles[surface]}…</p>
+    </div>
+    <script id="webview-script" nonce="${nonce}" type="module" src="${scriptUri}"></script>
+    <script nonce="${nonce}">
+      const app = document.querySelector("#app");
+      const fail = (message) => {
+        if (app) app.textContent = "${titles[surface]} failed to start: " + message;
+      };
+
+      window.addEventListener("error", ({ message }) => fail(message));
+      document.querySelector("#webview-script")?.addEventListener("error", () => {
+        fail("The bundled script could not be loaded: ${scriptUri}");
+      });
+      window.setTimeout(() => {
+        if (app?.dataset.webviewMounted !== "true") {
+          fail("The bundled script did not mount React.");
+        }
+      }, 3000);
+    </script>
   </body>
 </html>`;
 }
 
 export function getLocalResourceRoots(extensionUri: vscode.Uri): vscode.Uri[] {
   return [vscode.Uri.joinPath(extensionUri, "dist", "webview")];
-}
-
-export function getPanelColumn(): vscode.ViewColumn {
-  return vscode.ViewColumn.Active;
 }

@@ -19,6 +19,7 @@ for (const surface of ["sidebar", "diff-panel"]) {
     bundle: true,
     entryPoints: [path.join(sourceRoot, "main.tsx")],
     format: "esm",
+    jsx: "automatic",
     outfile: path.join(outputRoot, `${surface}.js`),
     platform: "browser",
     target: "es2022",
