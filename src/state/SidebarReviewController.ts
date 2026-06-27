@@ -1,19 +1,18 @@
 import type { GitBackend, RepositoryContext } from "../git/GitBackend";
-import type { DiffPanelState, SidebarState } from "../webviews/protocol";
-
-export const MAX_RENDERED_PATCH_BYTES = 1024 * 1024;
+import type { NativeDiffState } from "../panel";
+import type { SidebarState } from "../webviews/protocol";
 
 export class SidebarReviewController {
   private state: SidebarState = { status: "idle" };
   private repositoryContext: RepositoryContext | undefined;
   private requestSequence = 0;
-  private patchRequestSequence = 0;
+  private diffRequestSequence = 0;
 
   public constructor(
     private readonly gitBackend: GitBackend,
     private readonly publish: (state: SidebarState) => void | Promise<void>,
-    private readonly publishPanel: (
-      state: DiffPanelState,
+    private readonly publishDiff: (
+      state: NativeDiffState,
     ) => void | Promise<void> = () => {},
   ) {}
 
@@ -64,7 +63,7 @@ export class SidebarReviewController {
       return;
     }
 
-    const request = ++this.patchRequestSequence;
+    const request = ++this.diffRequestSequence;
     const selection = {
       comparisonId,
       baseRef: this.state.baseRef,
@@ -72,50 +71,42 @@ export class SidebarReviewController {
       path: file.path,
       ...(file.oldPath ? { oldPath: file.oldPath } : {}),
     };
-    await this.publishPanel({ status: "loading", ...selection });
+    await this.publishDiff({ status: "loading", ...selection });
 
     try {
-      const result = await this.gitBackend.getFilePatch({
+      if (request !== this.diffRequestSequence) {
+        return;
+      }
+
+      if (file.isBinary) {
+        await this.publishDiff({ status: "binary", ...selection });
+        return;
+      }
+
+      const result = await this.gitBackend.getFileDiff({
         repoRoot: context.repository.rootUri.fsPath,
         baseRef: selection.baseRef,
         headRef: selection.headRef,
+        mergeBase: this.state.comparison.mergeBase,
         path: selection.path,
         ...(selection.oldPath ? { oldPath: selection.oldPath } : {}),
+        status: file.status,
       });
-      if (request !== this.patchRequestSequence) {
+      if (request !== this.diffRequestSequence) {
         return;
       }
 
-      if (result.isBinary) {
-        await this.publishPanel({ status: "binary", ...selection });
-        return;
-      }
-
-      if (!result.patch) {
-        throw new Error(`Git returned no patch for ${selection.path}`);
-      }
-
-      const bytes = Buffer.byteLength(result.patch, "utf8");
-      if (bytes > MAX_RENDERED_PATCH_BYTES) {
-        await this.publishPanel({
-          status: "tooLarge",
-          ...selection,
-          bytes,
-          maxBytes: MAX_RENDERED_PATCH_BYTES,
-        });
-        return;
-      }
-
-      await this.publishPanel({
+      await this.publishDiff({
         status: "ready",
         ...selection,
-        patch: result.patch,
+        baseContent: result.baseContent,
+        headContent: result.headContent,
       });
     } catch (error) {
-      if (request !== this.patchRequestSequence) {
+      if (request !== this.diffRequestSequence) {
         return;
       }
-      await this.publishPanel({
+      await this.publishDiff({
         status: "error",
         ...selection,
         message: error instanceof Error ? error.message : String(error),
@@ -133,7 +124,7 @@ export class SidebarReviewController {
     }
 
     const request = ++this.requestSequence;
-    this.patchRequestSequence += 1;
+    this.diffRequestSequence += 1;
     const selection = {
       branches: context.branches,
       baseRef,
@@ -142,7 +133,7 @@ export class SidebarReviewController {
     this.state = { status: "loading", ...selection };
     await Promise.all([
       this.publish(this.state),
-      this.publishPanel({ status: "noSelection", baseRef, headRef }),
+      this.publishDiff({ status: "noSelection", baseRef, headRef }),
     ]);
 
     try {
@@ -162,6 +153,7 @@ export class SidebarReviewController {
           id: summary.id,
           baseRef: summary.baseRef,
           headRef: summary.headRef,
+          mergeBase: summary.mergeBase,
           files: summary.files,
           totals: summary.totals,
         },

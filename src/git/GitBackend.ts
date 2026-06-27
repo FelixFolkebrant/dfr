@@ -55,16 +55,18 @@ export interface ComparisonSummary {
   };
 }
 
-export interface FilePatchInput extends ComparisonInput {
+export interface FileDiffInput extends ComparisonInput {
+  mergeBase: string;
   path: string;
   oldPath?: string;
+  status: FileStatus;
 }
 
-export interface FilePatchResult {
+export interface FileDiffResult {
   path: string;
   oldPath?: string;
-  patch?: string;
-  isBinary: boolean;
+  baseContent: string;
+  headContent: string;
 }
 
 export interface GitBackend {
@@ -74,5 +76,5 @@ export interface GitBackend {
   getBranches(repository: Repository): Promise<BranchRef[]>;
   getDefaultBase(branches: BranchRef[]): Promise<BranchRef>;
   getComparisonSummary(input: ComparisonInput): Promise<ComparisonSummary>;
-  getFilePatch(input: FilePatchInput): Promise<FilePatchResult>;
+  getFileDiff(input: FileDiffInput): Promise<FileDiffResult>;
 }

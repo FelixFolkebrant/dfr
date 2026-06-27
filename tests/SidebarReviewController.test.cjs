@@ -2,7 +2,6 @@ const assert = require("node:assert/strict");
 const { test } = require("node:test");
 
 const {
-  MAX_RENDERED_PATCH_BYTES,
   SidebarReviewController,
 } = require("../dist/state/SidebarReviewController.js");
 
@@ -134,11 +133,11 @@ test("publishes a selected file from the active comparison", async () => {
     async getComparisonSummary(input) {
       return summary(input.baseRef, input.headRef);
     },
-    async getFilePatch(input) {
+    async getFileDiff(input) {
       return {
         path: input.path,
-        patch: "diff --git a/file.ts b/file.ts\n+changed\n",
-        isBinary: false,
+        baseContent: "before\n",
+        headContent: "after\n",
       };
     },
   };
@@ -160,7 +159,8 @@ test("publishes a selected file from the active comparison", async () => {
     baseRef: "main",
     headRef: "feature",
     path: "file.ts",
-    patch: "diff --git a/file.ts b/file.ts\n+changed\n",
+    baseContent: "before\n",
+    headContent: "after\n",
   });
 });
 
@@ -177,13 +177,13 @@ test("loads renamed files with both paths", async () => {
     async getComparisonSummary() {
       return renamedSummary;
     },
-    async getFilePatch(input) {
+    async getFileDiff(input) {
       requests.push(input);
       return {
         path: input.path,
         oldPath: input.oldPath,
-        patch: "diff --git a/old.ts b/new.ts\n",
-        isBinary: false,
+        baseContent: "before\n",
+        headContent: "after\n",
       };
     },
   };
@@ -197,20 +197,25 @@ test("loads renamed files with both paths", async () => {
       repoRoot: "/repo",
       baseRef: "main",
       headRef: "feature",
+      mergeBase: "abc123",
       path: "new.ts",
       oldPath: "old.ts",
+      status: "renamed",
     },
   ]);
 });
 
-test("publishes binary, oversized, and patch-loading error states", async () => {
+test("publishes binary and file-loading error states", async () => {
   const panelStates = [];
-  let result = { path: "file.ts", isBinary: true };
+  let isBinary = true;
+  let result = { path: "file.ts", baseContent: "before", headContent: "after" };
   const backend = {
     async getComparisonSummary(input) {
-      return summary(input.baseRef, input.headRef);
+      const value = summary(input.baseRef, input.headRef);
+      value.files[0].isBinary = isBinary;
+      return value;
     },
-    async getFilePatch() {
+    async getFileDiff() {
       if (result instanceof Error) {
         throw result;
       }
@@ -226,34 +231,15 @@ test("publishes binary, oversized, and patch-loading error states", async () => 
   await controller.selectFile("main:feature", "file.ts");
   assert.equal(panelStates.at(-1).status, "binary");
 
+  isBinary = false;
   await controller.selectBranches("other", "feature");
-  result = {
-    path: "file.ts",
-    isBinary: false,
-    patch: "x".repeat(MAX_RENDERED_PATCH_BYTES + 1),
-  };
+  result = new Error("file loading failed");
   await controller.selectFile("other:feature", "file.ts");
-  assert.deepEqual(
-    {
-      status: panelStates.at(-1).status,
-      bytes: panelStates.at(-1).bytes,
-      maxBytes: panelStates.at(-1).maxBytes,
-    },
-    {
-      status: "tooLarge",
-      bytes: MAX_RENDERED_PATCH_BYTES + 1,
-      maxBytes: MAX_RENDERED_PATCH_BYTES,
-    },
-  );
-
-  await controller.selectBranches("main", "feature");
-  result = new Error("patch failed");
-  await controller.selectFile("main:feature", "file.ts");
   assert.equal(panelStates.at(-1).status, "error");
-  assert.match(panelStates.at(-1).message, /patch failed/);
+  assert.match(panelStates.at(-1).message, /file loading failed/);
 });
 
-test("ignores superseded patches and clears the panel on branch changes", async () => {
+test("ignores superseded file loads and clears native diffs on branch changes", async () => {
   const panelStates = [];
   const pending = new Map();
   const twoFileSummary = summary("main", "feature");
@@ -274,7 +260,7 @@ test("ignores superseded patches and clears the panel on branch changes", async 
         headRef: input.headRef,
       };
     },
-    getFilePatch(input) {
+    getFileDiff(input) {
       return new Promise((resolve) => pending.set(input.path, resolve));
     },
   };
@@ -291,14 +277,14 @@ test("ignores superseded patches and clears the panel on branch changes", async 
   await new Promise((resolve) => setImmediate(resolve));
   pending.get("second.ts")({
     path: "second.ts",
-    patch: "diff --git a/second.ts b/second.ts\n+new\n",
-    isBinary: false,
+    baseContent: "",
+    headContent: "new\n",
   });
   await second;
   pending.get("file.ts")({
     path: "file.ts",
-    patch: "diff --git a/file.ts b/file.ts\n+old\n",
-    isBinary: false,
+    baseContent: "before\n",
+    headContent: "old\n",
   });
   await first;
 

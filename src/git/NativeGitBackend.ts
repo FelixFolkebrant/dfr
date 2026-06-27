@@ -5,8 +5,8 @@ import type {
   BranchRef,
   ComparisonInput,
   ComparisonSummary,
-  FilePatchInput,
-  FilePatchResult,
+  FileDiffInput,
+  FileDiffResult,
   GitBackend,
   Repository,
 } from "./GitBackend";
@@ -158,8 +158,8 @@ export class NativeGitBackend implements GitBackend {
     return this.diffService.getComparisonSummary(input);
   }
 
-  public async getFilePatch(input: FilePatchInput): Promise<FilePatchResult> {
-    return this.diffService.getFilePatch(input);
+  public async getFileDiff(input: FileDiffInput): Promise<FileDiffResult> {
+    return this.diffService.getFileDiff(input);
   }
 
   private async getApi(): Promise<GitApi> {

@@ -1,10 +1,10 @@
 import type * as vscode from "vscode";
 
 import type { GitBackend, RepositoryContext } from "./git/GitBackend";
+import type { NativeDiffState } from "./panel";
 import { SidebarReviewController } from "./state/SidebarReviewController";
 import { getLocalResourceRoots, renderWebviewDocument } from "./webview";
 import type {
-  DiffPanelState,
   ExtensionToSidebarMessage,
   SidebarToExtensionMessage,
 } from "./webviews/protocol";
@@ -18,12 +18,12 @@ export class BranchDiffSidebarProvider implements vscode.WebviewViewProvider {
   constructor(
     private readonly extensionUri: vscode.Uri,
     gitBackend: GitBackend,
-    publishPanel: (state: DiffPanelState) => void | Promise<void>,
+    publishDiff: (state: NativeDiffState) => void | Promise<void>,
   ) {
     this.controller = new SidebarReviewController(
       gitBackend,
       (state) => this.publishState(state),
-      publishPanel,
+      publishDiff,
     );
   }
 

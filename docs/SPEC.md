@@ -57,7 +57,7 @@ Allow a user to open VS Code, open the extension window in the left sidebar, and
   - basic diff summary
 - Mark the current branch with `•` in branch selectors.
 - Use `@pierre/trees` for the changed-file tree.
-- Use `@pierre/diffs` for rendering file diffs.
+- Use VS Code's built-in diff editor for rendering file diffs.
 - Clicking a file in the tree opens that file’s diff in the main editor area.
 - Handle common file states:
   - added
@@ -125,7 +125,7 @@ feature/x into main
 src/components/Button.tsx
 M  +21 -4
 
-[Split / Unified] [Open native diff] [Refresh]
+[VS Code diff editor controls]
 
 <diff rendered here>
 ```
@@ -157,11 +157,11 @@ In product language, this should be described as:
 - TypeScript
 - VS Code Extension API
 - VS Code Webview View for the sidebar
-- VS Code Webview Panel or custom editor-style panel for the main diff viewer
+- VS Code virtual text documents and built-in diff editor for the main diff viewer
 
 ### Webview UI
 
-- React for sidebar and diff-panel webview views.
+- React for the sidebar webview view.
 - Tailwind CSS for webview styling.
 - `esbuild` for small, explicit webview bundles.
 - Keep webview code as UI-only code. It should render state and send messages; it should not discover repositories, run Git, or parse patches.
@@ -187,7 +187,7 @@ Git CLI is useful for:
 - changed-file summaries
 - rename detection
 - numstat/addition/deletion counts
-- raw patches
+- selected file contents at the merge base and head
 - binary file detection
 - reliable machine-readable output
 
@@ -196,8 +196,8 @@ The extension should not depend entirely on one or the other. Native VS Code Git
 ### UI libraries
 
 - `@pierre/trees` (https://trees.software/docs) for the changed-file tree.
-- `@pierre/diffs` (https://diffs.com/docs) for rendering diffs.
-- React components should wrap these libraries behind small local components so the rest of the webview does not depend on third-party API details.
+- VS Code's `TextDocumentContentProvider` and `vscode.diff` command for file diffs.
+- React components should wrap the tree library behind a small local component so the rest of the webview does not depend on its API details.
 
 ### Optional supporting tools
 
@@ -231,7 +231,7 @@ interface GitBackend {
   getCurrentBranch(repo: Repository): Promise<BranchRef>;
   getBranches(repo: Repository): Promise<BranchRef[]>;
   getComparisonSummary(input: ComparisonInput): Promise<ComparisonSummary>;
-  getFilePatch(input: FilePatchInput): Promise<FilePatchResult>;
+  getFileDiff(input: FileDiffInput): Promise<FileDiffResult>;
 }
 ```
 
@@ -249,7 +249,7 @@ This should be the core mental model of the product.
 
 A two-dot/tip-to-tip comparison mode can be added later if users ask for it.
 
-### 3. Summary first, patches later
+### 3. Summary first, file contents later
 
 The extension should first load a cheap comparison summary:
 
@@ -258,20 +258,15 @@ The extension should first load a cheap comparison summary:
 - additions/deletions
 - commit count if easy
 
-It should not load every patch body upfront.
+It should not load every changed file upfront.
 
-File patches should be loaded lazily when the user clicks a file.
+The merge-base and head versions of a file should be loaded lazily when the user clicks it.
 
-### 4. Webview UI for the review surface
+### 4. Native diff editor for the review surface
 
-Use webviews for the custom UI because the experience is closer to GitHub/GitLab than VS Code’s default SCM tree.
+Use the sidebar webview for branch and file navigation, then open selected files in VS Code's built-in diff editor through read-only virtual documents.
 
-VS Code’s native diff editor can still be useful as an escape hatch:
-
-- command: **Open Selected File in Native Diff**
-- useful for accessibility, trust, or cases where the custom renderer has issues
-
-But the primary product should be the custom review UI using `@pierre/diffs` and `@pierre/trees`.
+This keeps diff rendering, syntax highlighting, accessibility, layout, and editor controls aligned with VS Code without owning a second renderer.
 
 ### 5. Extension host owns Git state
 
@@ -282,17 +277,15 @@ The extension host should own:
 - repository detection
 - branch detection
 - diff computation
-- patch loading
+- selected-file content loading
 - caching
 - error handling
 
 The webview should own:
 
-- rendering
 - local UI state
 - selected file
 - expanded folders
-- layout toggles
 - message dispatch back to the extension host
 
 ### 6. React/Tailwind webviews stay thin
@@ -305,7 +298,7 @@ Preferred direction:
 - keep shared message types explicit
 - keep Tailwind usage local to webview surfaces
 - avoid global state libraries until there is real cross-view state complexity
-- build small components around stable product concepts such as branch selectors, file tree, summary, and diff viewer
+- build small components around stable product concepts such as branch selectors, file tree, and summary
 
 ### 7. Keep the first version single-repository focused
 
