@@ -5,7 +5,10 @@
       "name": "Run Branch Diff Review Extension",
       "type": "extensionHost",
       "request": "launch",
-      "args": ["--extensionDevelopmentPath=${workspaceFolder}"],
+      "args": [
+        "${workspaceFolder}",
+        "--extensionDevelopmentPath=${workspaceFolder}"
+      ],
       "outFiles": ["${workspaceFolder}/dist/**/*.js"],
       "preLaunchTask": "pnpm: build"
     }
