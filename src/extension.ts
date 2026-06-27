@@ -19,7 +19,10 @@ export function activate(context: vscode.ExtensionContext): void {
   }
 
   const gitBackend = new NativeGitBackend();
-  const sidebarProvider = new BranchDiffSidebarProvider(context.extensionUri);
+  const sidebarProvider = new BranchDiffSidebarProvider(
+    context.extensionUri,
+    gitBackend,
+  );
 
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(
@@ -33,6 +36,7 @@ export function activate(context: vscode.ExtensionContext): void {
           return;
         }
 
+        void sidebarProvider.startReview(repositoryContext);
         showBranchDiffPanel(context, repositoryContext);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
