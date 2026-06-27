@@ -1,0 +1,71 @@
+{
+  "name": "tsup",
+  "displayName": "Branch Diff Review",
+  "description": "Local branch diff review for VS Code.",
+  "version": "0.0.1",
+  "private": true,
+  "publisher": "felixfolkebrant",
+  "license": "UNLICENSED",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "branchDiffReview.open",
+        "title": "Open Branch Diff Review",
+        "category": "Branch Diff Review"
+      }
+    ],
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "branchDiffReview",
+          "title": "Branch Diff",
+          "icon": "media/activity.svg"
+        }
+      ]
+    },
+    "views": {
+      "branchDiffReview": [
+        {
+          "id": "branchDiffReview.sidebar",
+          "name": "Branch Diff",
+          "type": "webview"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "build": "pnpm build:extension && pnpm build:webview",
+    "build:extension": "tsc -p tsconfig.json",
+    "build:webview": "node scripts/build-webviews.mjs",
+    "check": "pnpm typecheck && pnpm lint && pnpm build",
+    "clean": "rm -rf dist",
+    "format": "biome format --write .",
+    "lint": "biome check .",
+    "typecheck": "pnpm typecheck:extension && pnpm typecheck:webview",
+    "typecheck:extension": "tsc -p tsconfig.json --noEmit",
+    "typecheck:webview": "tsc -p tsconfig.webview.json --noEmit",
+    "vscode:prepublish": "pnpm build"
+  },
+  "dependencies": {
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.1",
+    "@tailwindcss/cli": "^4.3.1",
+    "@types/node": "^24.0.12",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@types/vscode": "^1.85.0",
+    "esbuild": "^0.25.6",
+    "tailwindcss": "^4.3.1",
+    "typescript": "^5.8.3"
+  }
+}

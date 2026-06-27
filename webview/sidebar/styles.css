@@ -1,0 +1,48 @@
+@import "tailwindcss";
+@source "./*.tsx";
+
+:root {
+  color-scheme: light dark;
+  font-family: var(--vscode-font-family);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--vscode-sideBar-background);
+  color: var(--vscode-sideBar-foreground);
+}
+
+@layer components {
+  .panel {
+    border: 1px solid var(--vscode-sideBar-border, var(--vscode-panel-border));
+    border-radius: 8px;
+    background: var(--vscode-sideBar-background);
+    padding: 12px;
+  }
+
+  .eyebrow {
+    margin: 0 0 6px;
+    color: var(--vscode-descriptionForeground);
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+  }
+
+  .muted {
+    margin: 0;
+    color: var(--vscode-descriptionForeground);
+    line-height: 1.5;
+  }
+
+  .select {
+    border: 1px solid var(--vscode-dropdown-border, var(--vscode-panel-border));
+    border-radius: 6px;
+    background: var(--vscode-dropdown-background);
+    color: var(--vscode-dropdown-foreground);
+    padding: 8px 10px;
+  }
+}

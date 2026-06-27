@@ -1,8 +1,13 @@
 docs/local
-.vscode
+.vscode/*
+!.vscode/
+!.vscode/launch.json
+!.vscode/tasks.json
 .agents/
 .codex
 
-
-# APM dependencies
+# Dependencies and build output
 apm_modules/
+node_modules/
+dist/
+*.vsix
