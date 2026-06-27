@@ -1,59 +1,163 @@
+import { useEffect, useState } from "react";
+import type { BranchRef } from "../../src/git/GitBackend";
+import type {
+  ExtensionToSidebarMessage,
+  SidebarState,
+  SidebarToExtensionMessage,
+} from "../../src/webviews/protocol";
+
+interface VsCodeApi {
+  postMessage(message: SidebarToExtensionMessage): void;
+}
+
+declare function acquireVsCodeApi(): VsCodeApi;
+
+const vscode = acquireVsCodeApi();
+
 export function Sidebar() {
+  const [state, setState] = useState<SidebarState>({ status: "idle" });
+
+  useEffect(() => {
+    const receiveMessage = (event: MessageEvent<ExtensionToSidebarMessage>) => {
+      if (event.data.type === "state") {
+        setState(event.data.state);
+      }
+    };
+    window.addEventListener("message", receiveMessage);
+    vscode.postMessage({ type: "ready" });
+    return () => window.removeEventListener("message", receiveMessage);
+  }, []);
+
+  if (state.status === "idle") {
+    return (
+      <main className="grid gap-3 p-3.5">
+        <section className="panel" aria-live="polite">
+          <h1 className="mb-2 text-lg font-semibold">Branch Diff</h1>
+          <p className="muted">
+            Run <strong>Open Branch Diff Review</strong> to compare branches.
+          </p>
+        </section>
+      </main>
+    );
+  }
+
+  const selectBranches = (baseRef: string, headRef: string) => {
+    vscode.postMessage({ type: "selectBranches", baseRef, headRef });
+  };
+  const currentBranchName = state.branches.find(
+    (branch) => branch.current,
+  )?.name;
+
   return (
-    <main className="grid gap-3 p-3.5 text-[var(--vscode-sideBar-foreground)]">
+    <main className="grid gap-3 p-3.5">
       <header className="panel">
-        <p className="eyebrow">Placeholder sidebar</p>
-        <h1 className="mb-2 text-lg font-semibold">Branch Diff</h1>
-        <p className="muted">
-          This issue only wires the review surfaces. Real branch discovery and
-          Git comparison land in later issues.
-        </p>
+        <p className="eyebrow">Merge-base comparison</p>
+        <h1 className="text-lg font-semibold">Branch Diff</h1>
       </header>
 
       <section className="panel grid gap-2.5">
-        <div className="grid gap-1.5">
-          <label className="text-xs font-semibold" htmlFor="base-branch">
-            Base
-          </label>
-          <select className="select" disabled id="base-branch">
-            <option>main</option>
-          </select>
-        </div>
-        <div className="grid gap-1.5">
-          <label className="text-xs font-semibold" htmlFor="compare-branch">
-            Compare
-          </label>
-          <select className="select" disabled id="compare-branch">
-            <option>current branch</option>
-          </select>
-        </div>
+        <BranchSelect
+          branches={state.branches}
+          currentBranchName={currentBranchName}
+          label="Base"
+          onChange={(baseRef) => selectBranches(baseRef, state.headRef)}
+          value={state.baseRef}
+        />
+        <BranchSelect
+          branches={state.branches}
+          currentBranchName={currentBranchName}
+          label="Compare"
+          onChange={(headRef) => selectBranches(state.baseRef, headRef)}
+          value={state.headRef}
+        />
+      </section>
+
+      <section className="panel grid gap-2.5" aria-live="polite">
+        <strong>Summary</strong>
+        {state.status === "loading" && (
+          <p className="muted" role="status">
+            Comparing {state.headRef} with {state.baseRef}…
+          </p>
+        )}
+        {state.status === "error" && (
+          <p className="error" role="alert">
+            {state.message}
+          </p>
+        )}
+        {state.status === "ready" && (
+          <Summary totals={state.comparison.totals} />
+        )}
       </section>
 
       <section className="panel grid gap-2.5">
-        <div className="flex items-center justify-between gap-2">
-          <strong>Changed files</strong>
-          <span>0 loaded</span>
-        </div>
+        <strong>Changed files</strong>
         <p className="muted">
-          Future tree surface for added, modified, deleted, renamed, and binary
-          files.
-        </p>
-        <ul className="list-disc pl-5 text-[var(--vscode-descriptionForeground)]">
-          <li>src/</li>
-          <li>components/</li>
-          <li>DiffPanel.tsx</li>
-        </ul>
-      </section>
-
-      <section className="panel grid gap-2.5">
-        <div className="flex items-center justify-between gap-2">
-          <strong>Summary</strong>
-          <span>Waiting for Git backend</span>
-        </div>
-        <p className="muted">
-          No repository, branch, or patch data is queried in IS-001.
+          {state.status === "ready" && state.comparison.files.length === 0
+            ? "No files changed in this comparison."
+            : "File tree and selection arrive in the next issue."}
         </p>
       </section>
     </main>
+  );
+}
+
+interface BranchSelectProps {
+  branches: BranchRef[];
+  currentBranchName?: string;
+  label: string;
+  onChange(value: string): void;
+  value: string;
+}
+
+function BranchSelect({
+  branches,
+  currentBranchName,
+  label,
+  onChange,
+  value,
+}: BranchSelectProps) {
+  const id = `${label.toLowerCase()}-branch`;
+  return (
+    <div className="grid gap-1.5">
+      <label className="text-xs font-semibold" htmlFor={id}>
+        {label}
+      </label>
+      <select
+        className="select"
+        id={id}
+        onChange={(event) => onChange(event.currentTarget.value)}
+        value={value}
+      >
+        {branches.map((branch) => (
+          <option key={branch.name} value={branch.name}>
+            {branch.name === currentBranchName ? "• " : ""}
+            {branch.name}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function Summary({
+  totals,
+}: {
+  totals: { files: number; additions: number; deletions: number };
+}) {
+  return (
+    <dl className="summary-grid">
+      <div>
+        <dt>Files</dt>
+        <dd>{totals.files}</dd>
+      </div>
+      <div>
+        <dt>Additions</dt>
+        <dd className="additions">+{totals.additions}</dd>
+      </div>
+      <div>
+        <dt>Deletions</dt>
+        <dd className="deletions">-{totals.deletions}</dd>
+      </div>
+    </dl>
   );
 }
