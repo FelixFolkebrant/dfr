@@ -37,6 +37,20 @@ export class SidebarReviewController {
     await this.loadComparison(baseRef, headRef);
   }
 
+  public async selectFile(comparisonId: string, path: string): Promise<void> {
+    if (
+      this.state.status !== "ready" ||
+      this.state.comparison.id !== comparisonId ||
+      !this.state.comparison.files.some((file) => file.path === path) ||
+      this.state.selectedPath === path
+    ) {
+      return;
+    }
+
+    this.state = { ...this.state, selectedPath: path };
+    await this.publish(this.state);
+  }
+
   private async loadComparison(
     baseRef: string,
     headRef: string,

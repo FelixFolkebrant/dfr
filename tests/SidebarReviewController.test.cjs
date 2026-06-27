@@ -125,3 +125,40 @@ test("prevents a stale comparison from replacing a newer selection", async () =>
   assert.equal(state.baseRef, "other");
   assert.equal(state.comparison.totals.files, 0);
 });
+
+test("publishes a selected file from the active comparison", async () => {
+  const states = [];
+  const backend = {
+    async getComparisonSummary(input) {
+      return summary(input.baseRef, input.headRef);
+    },
+  };
+  const controller = new SidebarReviewController(backend, (state) => {
+    states.push(state);
+  });
+  await controller.start(context);
+
+  await controller.selectFile("main:feature", "file.ts");
+
+  assert.equal(controller.getState().selectedPath, "file.ts");
+  assert.equal(states.at(-1).selectedPath, "file.ts");
+});
+
+test("ignores stale comparisons and paths outside the active summary", async () => {
+  let publishCount = 0;
+  const backend = {
+    async getComparisonSummary(input) {
+      return summary(input.baseRef, input.headRef);
+    },
+  };
+  const controller = new SidebarReviewController(backend, () => {
+    publishCount += 1;
+  });
+  await controller.start(context);
+
+  await controller.selectFile("other:feature", "file.ts");
+  await controller.selectFile("main:feature", "missing.ts");
+
+  assert.equal(controller.getState().selectedPath, undefined);
+  assert.equal(publishCount, 2);
+});

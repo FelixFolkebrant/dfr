@@ -5,6 +5,7 @@ import type {
   SidebarState,
   SidebarToExtensionMessage,
 } from "../../src/webviews/protocol";
+import { ChangedFileTree } from "./ChangedFileTree";
 
 interface VsCodeApi {
   postMessage(message: SidebarToExtensionMessage): void;
@@ -91,11 +92,26 @@ export function Sidebar() {
 
       <section className="panel grid gap-2.5">
         <strong>Changed files</strong>
-        <p className="muted">
-          {state.status === "ready" && state.comparison.files.length === 0
-            ? "No files changed in this comparison."
-            : "File tree and selection arrive in the next issue."}
-        </p>
+        {state.status === "ready" && state.comparison.files.length === 0 && (
+          <p className="muted">No files changed in this comparison.</p>
+        )}
+        {state.status === "ready" && state.comparison.files.length > 0 && (
+          <ChangedFileTree
+            key={state.comparison.id}
+            files={state.comparison.files}
+            onSelect={(path) =>
+              vscode.postMessage({
+                type: "selectFile",
+                comparisonId: state.comparison.id,
+                path,
+              })
+            }
+            selectedPath={state.selectedPath}
+          />
+        )}
+        {state.status !== "ready" && (
+          <p className="muted">Changed files appear after the comparison.</p>
+        )}
       </section>
     </main>
   );
