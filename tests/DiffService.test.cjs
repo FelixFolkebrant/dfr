@@ -109,3 +109,113 @@ test("reports merge-base failures with both refs", async () => {
     /Could not find a merge base between missing-base and feature/,
   );
 });
+
+test("loads one text patch from the merge base", async () => {
+  const calls = [];
+  const runner = {
+    async run(cwd, args) {
+      calls.push([cwd, args]);
+      return args[0] === "merge-base"
+        ? { stdout: "abc123\n", stderr: "" }
+        : { stdout: "diff --git a/file.ts b/file.ts\n+changed\n", stderr: "" };
+    },
+  };
+
+  const result = await new DiffService(runner).getFilePatch({
+    repoRoot: "/repo",
+    baseRef: "main",
+    headRef: "feature",
+    path: "file.ts",
+  });
+
+  assert.deepEqual(result, {
+    path: "file.ts",
+    patch: "diff --git a/file.ts b/file.ts\n+changed\n",
+    isBinary: false,
+  });
+  assert.deepEqual(calls[1], [
+    "/repo",
+    [
+      "diff",
+      "--find-renames",
+      "--no-ext-diff",
+      "--no-textconv",
+      "--unified=80",
+      "abc123",
+      "feature",
+      "--",
+      "file.ts",
+    ],
+  ]);
+});
+
+test("retains both rename paths when loading a patch", async () => {
+  const calls = [];
+  const runner = {
+    async run(_cwd, args) {
+      calls.push(args);
+      return args[0] === "merge-base"
+        ? { stdout: "abc123\n", stderr: "" }
+        : { stdout: "similarity index 100%\n", stderr: "" };
+    },
+  };
+
+  const result = await new DiffService(runner).getFilePatch({
+    repoRoot: "/repo",
+    baseRef: "main",
+    headRef: "feature",
+    oldPath: "old.ts",
+    path: "new.ts",
+  });
+
+  assert.equal(result.oldPath, "old.ts");
+  assert.deepEqual(calls[1].slice(-3), ["--", "old.ts", "new.ts"]);
+});
+
+test("identifies a binary patch without returning patch text", async () => {
+  const runner = {
+    async run(_cwd, args) {
+      return args[0] === "merge-base"
+        ? { stdout: "abc123\n", stderr: "" }
+        : {
+            stdout:
+              "diff --git a/image.png b/image.png\nBinary files a/image.png and b/image.png differ\n",
+            stderr: "",
+          };
+    },
+  };
+
+  const result = await new DiffService(runner).getFilePatch({
+    repoRoot: "/repo",
+    baseRef: "main",
+    headRef: "feature",
+    path: "image.png",
+  });
+
+  assert.deepEqual(result, {
+    path: "image.png",
+    patch: undefined,
+    isBinary: true,
+  });
+});
+
+test("reports empty selected-file patches with comparison context", async () => {
+  const runner = {
+    async run(_cwd, args) {
+      return args[0] === "merge-base"
+        ? { stdout: "abc123\n", stderr: "" }
+        : { stdout: "", stderr: "" };
+    },
+  };
+
+  await assert.rejects(
+    () =>
+      new DiffService(runner).getFilePatch({
+        repoRoot: "/repo",
+        baseRef: "main",
+        headRef: "feature",
+        path: "missing.ts",
+      }),
+    /Could not load the patch for missing\.ts between merge base abc123 and feature: Git returned no patch/,
+  );
+});
