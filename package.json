@@ -68,7 +68,6 @@
     "vscode:prepublish": "pnpm build"
   },
   "dependencies": {
-    "@pierre/trees": "1.0.0-beta.4",
     "react": "^19.2.7",
     "react-dom": "^19.2.7"
   },
