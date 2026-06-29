@@ -2,8 +2,8 @@ import type {
   ComparisonInput,
   ComparisonSummary,
   DiffFileSummary,
-  FilePatchInput,
-  FilePatchResult,
+  FileDiffInput,
+  FileDiffResult,
   FileStatus,
 } from "./GitBackend";
 import type { GitRunner } from "./GitRunner";
@@ -67,38 +67,43 @@ export class DiffService {
     }
   }
 
-  public async getFilePatch(input: FilePatchInput): Promise<FilePatchResult> {
-    const mergeBase = await this.findMergeBase(input);
-    const paths = input.oldPath ? [input.oldPath, input.path] : [input.path];
-
+  public async getFileDiff(input: FileDiffInput): Promise<FileDiffResult> {
     try {
-      const { stdout } = await this.gitRunner.run(input.repoRoot, [
-        "diff",
-        "--find-renames",
-        "--no-ext-diff",
-        "--no-textconv",
-        "--unified=80",
-        mergeBase,
-        input.headRef,
-        "--",
-        ...paths,
+      const [baseContent, headContent] = await Promise.all([
+        input.status === "added"
+          ? ""
+          : this.readFile(
+              input.repoRoot,
+              input.mergeBase,
+              input.oldPath ?? input.path,
+            ),
+        input.status === "deleted"
+          ? ""
+          : this.readFile(input.repoRoot, input.headRef, input.path),
       ]);
-      if (!stdout) {
-        throw new Error(`Git returned no patch for ${input.path}`);
-      }
-
-      const isBinary = /^Binary files .+ differ$/m.test(stdout);
       return {
         path: input.path,
         ...(input.oldPath ? { oldPath: input.oldPath } : {}),
-        patch: isBinary ? undefined : stdout,
-        isBinary,
+        baseContent,
+        headContent,
       };
     } catch (error) {
       throw new Error(
-        `Could not load the patch for ${input.path} between merge base ${mergeBase} and ${input.headRef}: ${errorMessage(error)}`,
+        `Could not load ${input.path} between merge base ${input.mergeBase} and ${input.headRef}: ${errorMessage(error)}`,
       );
     }
+  }
+
+  private async readFile(
+    repoRoot: string,
+    ref: string,
+    path: string,
+  ): Promise<string> {
+    const { stdout } = await this.gitRunner.run(repoRoot, [
+      "show",
+      `${ref}:${path}`,
+    ]);
+    return stdout;
   }
 
   private async findMergeBase(input: ComparisonInput): Promise<string> {

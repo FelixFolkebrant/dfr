@@ -1,14 +1,19 @@
 import type { GitBackend, RepositoryContext } from "../git/GitBackend";
+import type { NativeDiffState } from "../panel";
 import type { SidebarState } from "../webviews/protocol";
 
 export class SidebarReviewController {
   private state: SidebarState = { status: "idle" };
   private repositoryContext: RepositoryContext | undefined;
   private requestSequence = 0;
+  private diffRequestSequence = 0;
 
   public constructor(
     private readonly gitBackend: GitBackend,
     private readonly publish: (state: SidebarState) => void | Promise<void>,
+    private readonly publishDiff: (
+      state: NativeDiffState,
+    ) => void | Promise<void> = () => {},
   ) {}
 
   public getState(): SidebarState {
@@ -49,6 +54,64 @@ export class SidebarReviewController {
 
     this.state = { ...this.state, selectedPath: path };
     await this.publish(this.state);
+
+    const context = this.repositoryContext;
+    const file = this.state.comparison.files.find(
+      (candidate) => candidate.path === path,
+    );
+    if (!context || !file) {
+      return;
+    }
+
+    const request = ++this.diffRequestSequence;
+    const selection = {
+      comparisonId,
+      baseRef: this.state.baseRef,
+      headRef: this.state.headRef,
+      path: file.path,
+      ...(file.oldPath ? { oldPath: file.oldPath } : {}),
+    };
+    await this.publishDiff({ status: "loading", ...selection });
+
+    try {
+      if (request !== this.diffRequestSequence) {
+        return;
+      }
+
+      if (file.isBinary) {
+        await this.publishDiff({ status: "binary", ...selection });
+        return;
+      }
+
+      const result = await this.gitBackend.getFileDiff({
+        repoRoot: context.repository.rootUri.fsPath,
+        baseRef: selection.baseRef,
+        headRef: selection.headRef,
+        mergeBase: this.state.comparison.mergeBase,
+        path: selection.path,
+        ...(selection.oldPath ? { oldPath: selection.oldPath } : {}),
+        status: file.status,
+      });
+      if (request !== this.diffRequestSequence) {
+        return;
+      }
+
+      await this.publishDiff({
+        status: "ready",
+        ...selection,
+        baseContent: result.baseContent,
+        headContent: result.headContent,
+      });
+    } catch (error) {
+      if (request !== this.diffRequestSequence) {
+        return;
+      }
+      await this.publishDiff({
+        status: "error",
+        ...selection,
+        message: error instanceof Error ? error.message : String(error),
+      });
+    }
   }
 
   private async loadComparison(
@@ -61,13 +124,17 @@ export class SidebarReviewController {
     }
 
     const request = ++this.requestSequence;
+    this.diffRequestSequence += 1;
     const selection = {
       branches: context.branches,
       baseRef,
       headRef,
     };
     this.state = { status: "loading", ...selection };
-    await this.publish(this.state);
+    await Promise.all([
+      this.publish(this.state),
+      this.publishDiff({ status: "noSelection", baseRef, headRef }),
+    ]);
 
     try {
       const summary = await this.gitBackend.getComparisonSummary({
@@ -86,6 +153,7 @@ export class SidebarReviewController {
           id: summary.id,
           baseRef: summary.baseRef,
           headRef: summary.headRef,
+          mergeBase: summary.mergeBase,
           files: summary.files,
           totals: summary.totals,
         },

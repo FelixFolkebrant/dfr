@@ -12,7 +12,7 @@ const outputRoot = path.join(root, "dist", "webview");
 await rm(outputRoot, { force: true, recursive: true });
 await mkdir(outputRoot, { recursive: true });
 
-for (const surface of ["sidebar", "diff-panel"]) {
+for (const surface of ["sidebar"]) {
   const sourceRoot = path.join(root, "webview", surface);
 
   await esbuild.build({

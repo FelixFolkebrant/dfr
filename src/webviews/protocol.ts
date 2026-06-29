@@ -8,6 +8,7 @@ export interface SidebarComparison {
   id: string;
   baseRef: string;
   headRef: string;
+  mergeBase: string;
   files: DiffFileSummary[];
   totals: ComparisonSummary["totals"];
 }

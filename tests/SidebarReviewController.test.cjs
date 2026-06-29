@@ -114,7 +114,7 @@ test("prevents a stale comparison from replacing a newer selection", async () =>
 
   const initial = controller.start(context);
   const newer = controller.selectBranches("other", "feature");
-  await Promise.resolve();
+  await new Promise((resolve) => setImmediate(resolve));
   pending.get("other")(summary("other", "feature", 0));
   await newer;
   pending.get("main")(summary("main", "feature"));
@@ -128,20 +128,175 @@ test("prevents a stale comparison from replacing a newer selection", async () =>
 
 test("publishes a selected file from the active comparison", async () => {
   const states = [];
+  const panelStates = [];
   const backend = {
     async getComparisonSummary(input) {
       return summary(input.baseRef, input.headRef);
     },
+    async getFileDiff(input) {
+      return {
+        path: input.path,
+        baseContent: "before\n",
+        headContent: "after\n",
+      };
+    },
   };
-  const controller = new SidebarReviewController(backend, (state) => {
-    states.push(state);
-  });
+  const controller = new SidebarReviewController(
+    backend,
+    (state) => states.push(state),
+    (state) => panelStates.push(state),
+  );
   await controller.start(context);
 
   await controller.selectFile("main:feature", "file.ts");
 
   assert.equal(controller.getState().selectedPath, "file.ts");
   assert.equal(states.at(-1).selectedPath, "file.ts");
+  assert.equal(panelStates.at(-2).status, "loading");
+  assert.deepEqual(panelStates.at(-1), {
+    status: "ready",
+    comparisonId: "main:feature",
+    baseRef: "main",
+    headRef: "feature",
+    path: "file.ts",
+    baseContent: "before\n",
+    headContent: "after\n",
+  });
+});
+
+test("loads renamed files with both paths", async () => {
+  const requests = [];
+  const renamedSummary = summary("main", "feature");
+  renamedSummary.files[0] = {
+    ...renamedSummary.files[0],
+    path: "new.ts",
+    oldPath: "old.ts",
+    status: "renamed",
+  };
+  const backend = {
+    async getComparisonSummary() {
+      return renamedSummary;
+    },
+    async getFileDiff(input) {
+      requests.push(input);
+      return {
+        path: input.path,
+        oldPath: input.oldPath,
+        baseContent: "before\n",
+        headContent: "after\n",
+      };
+    },
+  };
+  const controller = new SidebarReviewController(backend, () => {});
+  await controller.start(context);
+
+  await controller.selectFile("main:feature", "new.ts");
+
+  assert.deepEqual(requests, [
+    {
+      repoRoot: "/repo",
+      baseRef: "main",
+      headRef: "feature",
+      mergeBase: "abc123",
+      path: "new.ts",
+      oldPath: "old.ts",
+      status: "renamed",
+    },
+  ]);
+});
+
+test("publishes binary and file-loading error states", async () => {
+  const panelStates = [];
+  let isBinary = true;
+  let result = { path: "file.ts", baseContent: "before", headContent: "after" };
+  const backend = {
+    async getComparisonSummary(input) {
+      const value = summary(input.baseRef, input.headRef);
+      value.files[0].isBinary = isBinary;
+      return value;
+    },
+    async getFileDiff() {
+      if (result instanceof Error) {
+        throw result;
+      }
+      return result;
+    },
+  };
+  const controller = new SidebarReviewController(
+    backend,
+    () => {},
+    (state) => panelStates.push(state),
+  );
+  await controller.start(context);
+  await controller.selectFile("main:feature", "file.ts");
+  assert.equal(panelStates.at(-1).status, "binary");
+
+  isBinary = false;
+  await controller.selectBranches("other", "feature");
+  result = new Error("file loading failed");
+  await controller.selectFile("other:feature", "file.ts");
+  assert.equal(panelStates.at(-1).status, "error");
+  assert.match(panelStates.at(-1).message, /file loading failed/);
+});
+
+test("ignores superseded file loads and clears native diffs on branch changes", async () => {
+  const panelStates = [];
+  const pending = new Map();
+  const twoFileSummary = summary("main", "feature");
+  twoFileSummary.files.push({
+    path: "second.ts",
+    status: "added",
+    additions: 1,
+    deletions: 0,
+    isBinary: false,
+  });
+  twoFileSummary.totals.files = 2;
+  const backend = {
+    async getComparisonSummary(input) {
+      return {
+        ...twoFileSummary,
+        id: `${input.baseRef}:${input.headRef}`,
+        baseRef: input.baseRef,
+        headRef: input.headRef,
+      };
+    },
+    getFileDiff(input) {
+      return new Promise((resolve) => pending.set(input.path, resolve));
+    },
+  };
+  const controller = new SidebarReviewController(
+    backend,
+    () => {},
+    (state) => panelStates.push(state),
+  );
+  await controller.start(context);
+
+  const first = controller.selectFile("main:feature", "file.ts");
+  await new Promise((resolve) => setImmediate(resolve));
+  const second = controller.selectFile("main:feature", "second.ts");
+  await new Promise((resolve) => setImmediate(resolve));
+  pending.get("second.ts")({
+    path: "second.ts",
+    baseContent: "",
+    headContent: "new\n",
+  });
+  await second;
+  pending.get("file.ts")({
+    path: "file.ts",
+    baseContent: "before\n",
+    headContent: "old\n",
+  });
+  await first;
+
+  assert.equal(panelStates.at(-1).status, "ready");
+  assert.equal(panelStates.at(-1).path, "second.ts");
+
+  await controller.selectBranches("other", "feature");
+  assert.deepEqual(panelStates.at(-1), {
+    status: "noSelection",
+    baseRef: "other",
+    headRef: "feature",
+  });
 });
 
 test("ignores stale comparisons and paths outside the active summary", async () => {

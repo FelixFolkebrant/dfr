@@ -2,11 +2,10 @@ import crypto from "node:crypto";
 
 import * as vscode from "vscode";
 
-export type WebviewSurface = "sidebar" | "diff-panel";
+export type WebviewSurface = "sidebar";
 
 const titles: Record<WebviewSurface, string> = {
   sidebar: "Branch Diff",
-  "diff-panel": "Branch Diff Review",
 };
 
 export function renderWebviewDocument(
