@@ -56,7 +56,10 @@ Allow a user to open VS Code, open the extension window in the left sidebar, and
   - changed-file tree
   - basic diff summary
 - Mark the current branch with `•` in branch selectors.
-- Use `@pierre/trees` for the changed-file tree.
+- Use fully styleable webview comboboxes for branch selection.
+- Show a custom changed-file tree without file-type icons.
+- Give added, modified, deleted, and renamed files distinct status icons and theme-aware colors.
+- Show per-file additions and deletions at the right edge of each row.
 - Use VS Code's built-in diff editor for rendering file diffs.
 - Clicking a file in the tree opens that file’s diff in the main editor area.
 - Handle common file states:
@@ -105,14 +108,16 @@ Compare
 
 src/
   components/
-    M Button.tsx       +21 -4
-    A DiffPanel.tsx    +90 -0
+    ● Button.tsx       +21 -4
+    + DiffPanel.tsx    +90
   git/
-    M DiffService.ts   +44 -11
-README.md             M +8 -2
+    − OldService.ts          -11
+README.md              ● +8 -2
 ```
 
-The branch selector should feel lightweight. The current branch is marked with `•`. The default comparison should be selected automatically so the user does not need to configure anything for the common case.
+The branch selector should feel lightweight and be fully controlled by the sidebar stylesheet, including its open list. The current branch is marked with `•`. The default comparison should be selected automatically so the user does not need to configure anything for the common case.
+
+File rows should not display file-type icons. The leading visual communicates Git status only, using distinct added, modified, deleted, and renamed symbols with the active VS Code theme's Git colors. Addition and deletion counts stay aligned at the right edge and use independent green and red colors.
 
 ### Main editor area
 
@@ -193,11 +198,11 @@ Git CLI is useful for:
 
 The extension should not depend entirely on one or the other. Native VS Code Git support gives better integration, while Git CLI gives more control over exact diff behavior.
 
-### UI libraries
+### UI surfaces
 
-- `@pierre/trees` (https://trees.software/docs) for the changed-file tree.
+- Small local React components for the branch selectors and changed-file tree.
 - VS Code's `TextDocumentContentProvider` and `vscode.diff` command for file diffs.
-- React components should wrap the tree library behind a small local component so the rest of the webview does not depend on its API details.
+- VS Code theme variables for selection, focus, Git status, and addition/deletion colors.
 
 ### Optional supporting tools
 
@@ -468,13 +473,13 @@ This is intentionally lighter than a full implementation breakdown.
 14. Build branch selector UI.
 15. Mark current branch with `•`.
 16. Show diff summary counts.
-17. Render changed files using `@pierre/trees`.
+17. Render changed files with a custom accessible tree.
 18. Send selected file changes to the extension host.
 
 ### P0 — Diff UX
 
-19. Spike `@pierre/diffs` inside a React VS Code webview.
-20. Render selected file patch in the main panel.
+19. Expose selected file versions through read-only virtual documents.
+20. Render selected files with VS Code's built-in diff editor.
 21. Handle added, modified, deleted, renamed, binary, and too-large files.
 22. Add refresh behavior.
 23. Add useful empty/error states.
@@ -493,7 +498,6 @@ This is intentionally lighter than a full implementation breakdown.
 - Search/filter changed files.
 - Whitespace toggle.
 - Split/unified layout toggle.
-- Native VS Code diff fallback command.
 - Remote branch support.
 - Better multi-root support.
 
@@ -512,8 +516,6 @@ This is intentionally lighter than a full implementation breakdown.
 - Should the base branch default to local `main/master` or remote `origin/main/origin/master`?
 - Should remote branches appear in the selector by default?
 - Should the MVP show only one selected file diff, or should it include a simple all-files diff view?
-- How much customization does `@pierre/trees` allow for rows, icons, and metadata?
-- What is the best `@pierre/diffs` input format for our use case: raw patch, parsed patch, or old/new contents?
 - Should the extension remember the last selected base branch per workspace?
 - Should there be a setting for merge-base vs two-dot comparison?
 
