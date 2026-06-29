@@ -2,7 +2,7 @@ import * as vscode from "vscode";
 import { getRepositoryContext } from "./git/getRepositoryContext";
 import { NativeGitBackend } from "./git/NativeGitBackend";
 import { NativeDiffView } from "./panel";
-import { BranchDiffSidebarProvider } from "./sidebar";
+import { BranchDiffView } from "./view";
 
 export function activate(context: vscode.ExtensionContext): void {
   if (
@@ -20,18 +20,13 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const gitBackend = new NativeGitBackend();
   const diffView = new NativeDiffView();
-  const sidebarProvider = new BranchDiffSidebarProvider(
-    context.extensionUri,
-    gitBackend,
-    (state) => diffView.update(state),
+  const branchDiffView = new BranchDiffView(gitBackend, (state) =>
+    diffView.update(state),
   );
 
   context.subscriptions.push(
     diffView,
-    vscode.window.registerWebviewViewProvider(
-      BranchDiffSidebarProvider.viewId,
-      sidebarProvider,
-    ),
+    branchDiffView,
     vscode.commands.registerCommand("branchDiffReview.open", async () => {
       try {
         const repositoryContext = await getRepositoryContext(gitBackend);
@@ -39,7 +34,7 @@ export function activate(context: vscode.ExtensionContext): void {
           return;
         }
 
-        await sidebarProvider.startReview(repositoryContext);
+        await branchDiffView.startReview(repositoryContext);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         await vscode.window.showErrorMessage(
@@ -47,5 +42,16 @@ export function activate(context: vscode.ExtensionContext): void {
         );
       }
     }),
+    vscode.commands.registerCommand(
+      "branchDiffReview.selectFile",
+      (comparisonId: string, path: string) =>
+        branchDiffView.selectFile(comparisonId, path),
+    ),
+    vscode.commands.registerCommand("branchDiffReview.selectBase", () =>
+      branchDiffView.selectBase(),
+    ),
+    vscode.commands.registerCommand("branchDiffReview.selectCompare", () =>
+      branchDiffView.selectCompare(),
+    ),
   );
 }

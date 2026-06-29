@@ -47,40 +47,27 @@
       "branchDiffReview": [
         {
           "id": "branchDiffReview.sidebar",
-          "name": "Branch Diff",
-          "type": "webview"
+          "name": "Branch Diff"
         }
       ]
     }
   },
   "scripts": {
-    "build": "pnpm build:extension && pnpm build:webview",
+    "build": "pnpm clean && pnpm build:extension",
     "build:extension": "tsc -p tsconfig.json",
-    "build:webview": "node scripts/build-webviews.mjs",
     "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm build",
     "clean": "rm -rf dist",
     "format": "biome format --write .",
     "lint": "biome check .",
     "test": "pnpm build:extension && node --test tests/*.test.cjs",
-    "typecheck": "pnpm typecheck:extension && pnpm typecheck:webview",
+    "typecheck": "pnpm typecheck:extension",
     "typecheck:extension": "tsc -p tsconfig.json --noEmit",
-    "typecheck:webview": "tsc -p tsconfig.webview.json --noEmit",
     "vscode:prepublish": "pnpm build"
-  },
-  "dependencies": {
-    "@pierre/trees": "1.0.0-beta.4",
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.1",
-    "@tailwindcss/cli": "^4.3.1",
     "@types/node": "^24.0.12",
-    "@types/react": "^19.2.17",
-    "@types/react-dom": "^19.2.3",
     "@types/vscode": "^1.85.0",
-    "esbuild": "^0.25.6",
-    "tailwindcss": "^4.3.1",
     "typescript": "^5.8.3"
   }
 }

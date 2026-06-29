@@ -1,22 +1,22 @@
 import type { GitBackend, RepositoryContext } from "../git/GitBackend";
 import type { NativeDiffState } from "../panel";
-import type { SidebarState } from "../webviews/protocol";
+import type { ReviewState } from "./ReviewState";
 
 export class SidebarReviewController {
-  private state: SidebarState = { status: "idle" };
+  private state: ReviewState = { status: "idle" };
   private repositoryContext: RepositoryContext | undefined;
   private requestSequence = 0;
   private diffRequestSequence = 0;
 
   public constructor(
     private readonly gitBackend: GitBackend,
-    private readonly publish: (state: SidebarState) => void | Promise<void>,
+    private readonly publish: (state: ReviewState) => void | Promise<void>,
     private readonly publishDiff: (
       state: NativeDiffState,
     ) => void | Promise<void> = () => {},
   ) {}
 
-  public getState(): SidebarState {
+  public getState(): ReviewState {
     return this.state;
   }
 

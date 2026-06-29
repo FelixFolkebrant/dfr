@@ -51,14 +51,14 @@ Allow a user to open VS Code, open the extension window in the left sidebar, and
   - `origin/master`
 - Compare current branch against the base branch using PR-style merge-base semantics.
 - Show a sidebar view with:
-  - base branch dropdown
-  - compare branch dropdown
-  - changed-file tree
-  - basic diff summary
+  - compact base branch row
+  - compact compare branch row
+  - native changed-file explorer
+  - one-line diff summary
 - Mark the current branch with `•` in branch selectors.
-- Use `@pierre/trees` for the changed-file tree.
+- Use VS Code's native Tree View API for the changed-file explorer.
 - Use VS Code's built-in diff editor for rendering file diffs.
-- Clicking a file in the tree opens that file’s diff in the main editor area.
+- Clicking a file in the explorer opens that file’s diff in the main editor area.
 - Handle common file states:
   - added
   - modified
@@ -94,25 +94,20 @@ Rough shape:
 ```text
 Branch Diff
 
-Base
-[ main        v ]
--
-Compare
-[ • feature/x v ]
-
-13 files changed
-+428 -97
+Base                  main
+Compare              • feature/x
+13 changed files      +428 -97
 
 src/
   components/
-    M Button.tsx       +21 -4
-    A DiffPanel.tsx    +90 -0
+    Button.tsx       +21 -4  M
+    DiffPanel.tsx    +90     A
   git/
-    M DiffService.ts   +44 -11
-README.md             M +8 -2
+    DiffService.ts   +44 -11 M
+README.md             +8 -2 M
 ```
 
-The branch selector should feel lightweight. The current branch is marked with `•`. The default comparison should be selected automatically so the user does not need to configure anything for the common case.
+The two branch rows should be compact. Selecting one opens a native Quick Pick, and the current branch is marked with `•`. Changed files follow the one-line summary in the same native view. File names and A/M/D/R badges use VS Code's Git decoration colors, while GitHub-style `+added -removed` counts remain visible beside each file.
 
 ### Main editor area
 
@@ -156,16 +151,15 @@ In product language, this should be described as:
 - VS Code extension
 - TypeScript
 - VS Code Extension API
-- VS Code Webview View for the sidebar
+- VS Code Tree View for branch selection, summary, and changed files
 - VS Code virtual text documents and built-in diff editor for the main diff viewer
 
-### Webview UI
+### Native sidebar UI
 
-- React for the sidebar webview view.
-- Tailwind CSS for webview styling.
-- `esbuild` for small, explicit webview bundles.
-- Keep webview code as UI-only code. It should render state and send messages; it should not discover repositories, run Git, or parse patches.
-- Prefer simple local build scripts over a larger app framework until the UI needs routing, dev server behavior, or heavier asset handling.
+- Use one contributed Tree View for the complete Branch Diff sidebar.
+- Use native Quick Picks for branch selection.
+- Use native file decorations for file icons, A/M/D/R badges, and theme-aware Git status colors.
+- Keep Git discovery, comparisons, and selected-file loading in the extension host.
 
 ### Git integration
 
@@ -193,17 +187,17 @@ Git CLI is useful for:
 
 The extension should not depend entirely on one or the other. Native VS Code Git support gives better integration, while Git CLI gives more control over exact diff behavior.
 
-### UI libraries
+### UI surfaces
 
-- `@pierre/trees` (https://trees.software/docs) for the changed-file tree.
+- VS Code's `TreeDataProvider` and `TreeView` APIs for changed-file navigation.
+- VS Code's `QuickPick` API for compact branch selection.
+- VS Code's `FileDecorationProvider` for Git status colors and badges.
 - VS Code's `TextDocumentContentProvider` and `vscode.diff` command for file diffs.
-- React components should wrap the tree library behind a small local component so the rest of the webview does not depend on its API details.
 
 ### Optional supporting tools
 
 These are useful but not mandatory:
 
-- Zod or similar for validating webview messages.
 - Vitest/Jest for unit tests.
 - Git fixture repositories for integration-style tests.
 - Playwright or VS Code extension tests once UI behavior becomes complex enough to justify browser/extension-host coverage.
@@ -264,13 +258,11 @@ The merge-base and head versions of a file should be loaded lazily when the user
 
 ### 4. Native diff editor for the review surface
 
-Use the sidebar webview for branch and file navigation, then open selected files in VS Code's built-in diff editor through read-only virtual documents.
+Use the native sidebar view for branch and file navigation, then open selected files in VS Code's built-in diff editor through read-only virtual documents.
 
 This keeps diff rendering, syntax highlighting, accessibility, layout, and editor controls aligned with VS Code without owning a second renderer.
 
 ### 5. Extension host owns Git state
-
-The webview should not run Git commands.
 
 The extension host should own:
 
@@ -281,24 +273,21 @@ The extension host should own:
 - caching
 - error handling
 
-The webview should own:
+The native Branch Diff view should own:
 
-- local UI state
+- branch selection commands
+- compact comparison presentation
 - selected file
 - expanded folders
-- message dispatch back to the extension host
 
-### 6. React/Tailwind webviews stay thin
-
-React is the chosen webview UI layer, but it should not become the application architecture by itself.
+### 6. Native UI stays thin
 
 Preferred direction:
 
 - keep Git and filesystem behavior in the extension host
-- keep shared message types explicit
-- keep Tailwind usage local to webview surfaces
-- avoid global state libraries until there is real cross-view state complexity
-- build small components around stable product concepts such as branch selectors, file tree, and summary
+- keep comparison state explicit
+- use VS Code-native controls and theme colors
+- avoid custom rendering until a native API cannot meet a demonstrated need
 
 ### 7. Keep the first version single-repository focused
 
@@ -421,21 +410,11 @@ src/
     GitRunner.ts
 
   state/
-    ComparisonStore.ts
-    PatchCache.ts
+    ReviewState.ts
+    SidebarReviewController.ts
 
-  webviews/
-    SidebarViewProvider.ts
-    DiffPanel.ts
-    protocol.ts
-
-webview/
-  sidebar/
-  diff-panel/
-  shared/
-
-scripts/
-  build-webviews.mjs
+  panel.ts
+  view.ts
 ```
 
 This should evolve as the project gets built.
@@ -448,9 +427,9 @@ This is intentionally lighter than a full implementation breakdown.
 
 1. Scaffold VS Code extension project.
 2. Add command to open Branch Diff Review.
-3. Add placeholder sidebar webview.
-4. Add placeholder diff panel webview.
-5. Add React/Tailwind webview build setup.
+3. Add placeholder sidebar view.
+4. Add placeholder diff surface.
+5. Wire native VS Code UI surfaces.
 6. Add Biome formatting/lint checks.
 
 ### P0 — Git backend
@@ -468,13 +447,13 @@ This is intentionally lighter than a full implementation breakdown.
 14. Build branch selector UI.
 15. Mark current branch with `•`.
 16. Show diff summary counts.
-17. Render changed files using `@pierre/trees`.
+17. Render changed files using VS Code's native Tree View API.
 18. Send selected file changes to the extension host.
 
 ### P0 — Diff UX
 
-19. Spike `@pierre/diffs` inside a React VS Code webview.
-20. Render selected file patch in the main panel.
+19. Open selected files in VS Code's native diff editor.
+20. Render merge-base and head contents through virtual documents.
 21. Handle added, modified, deleted, renamed, binary, and too-large files.
 22. Add refresh behavior.
 23. Add useful empty/error states.
@@ -512,8 +491,7 @@ This is intentionally lighter than a full implementation breakdown.
 - Should the base branch default to local `main/master` or remote `origin/main/origin/master`?
 - Should remote branches appear in the selector by default?
 - Should the MVP show only one selected file diff, or should it include a simple all-files diff view?
-- How much customization does `@pierre/trees` allow for rows, icons, and metadata?
-- What is the best `@pierre/diffs` input format for our use case: raw patch, parsed patch, or old/new contents?
+- Should the changed-file explorer add search or filtering after the MVP?
 - Should the extension remember the last selected base branch per workspace?
 - Should there be a setting for merge-base vs two-dot comparison?
 
