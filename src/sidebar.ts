@@ -53,6 +53,10 @@ export class BranchDiffSidebarProvider implements vscode.WebviewViewProvider {
     await this.controller.start(context);
   }
 
+  public async refreshReview(context: RepositoryContext): Promise<void> {
+    await this.controller.refresh(context);
+  }
+
   private async handleMessage(message: unknown): Promise<void> {
     if (!isSidebarMessage(message)) {
       return;

@@ -317,3 +317,188 @@ test("ignores stale comparisons and paths outside the active summary", async () 
   assert.equal(controller.getState().selectedPath, undefined);
   assert.equal(publishCount, 2);
 });
+
+test("refresh preserves selected refs when both still exist", async () => {
+  const requests = [];
+  const refreshedBranches = [
+    { name: "next", kind: "local", current: true },
+    ...branches,
+  ];
+  const refreshedContext = {
+    ...context,
+    currentBranch: refreshedBranches[0],
+    branches: refreshedBranches,
+  };
+  const backend = {
+    async getComparisonSummary(input) {
+      requests.push(input);
+      return summary(input.baseRef, input.headRef);
+    },
+  };
+  const controller = new SidebarReviewController(backend, () => {});
+  await controller.start(context);
+  await controller.selectBranches("other", "feature");
+
+  await controller.refresh(refreshedContext);
+
+  assert.deepEqual(requests.at(-1), {
+    repoRoot: "/repo",
+    baseRef: "other",
+    headRef: "feature",
+  });
+  assert.equal(controller.getState().branches, refreshedBranches);
+});
+
+test("refresh resets both refs when either selected ref is missing", async () => {
+  const requests = [];
+  const missingHeadBranches = [
+    { name: "next", kind: "local", current: true },
+    { name: "develop", kind: "local", current: false },
+    branches[2],
+  ];
+  const missingHeadContext = {
+    ...context,
+    currentBranch: missingHeadBranches[0],
+    branches: missingHeadBranches,
+    defaultBase: missingHeadBranches[1],
+  };
+  const backend = {
+    async getComparisonSummary(input) {
+      requests.push(input);
+      return summary(input.baseRef, input.headRef);
+    },
+  };
+  const controller = new SidebarReviewController(backend, () => {});
+  await controller.start(context);
+  await controller.selectBranches("other", "feature");
+
+  await controller.refresh(missingHeadContext);
+
+  assert.deepEqual(requests.at(-1), {
+    repoRoot: "/repo",
+    baseRef: "develop",
+    headRef: "next",
+  });
+
+  const missingBaseBranches = [
+    { name: "release", kind: "local", current: true },
+    { name: "trunk", kind: "local", current: false },
+    { name: "next", kind: "local", current: false },
+  ];
+  await controller.refresh({
+    ...context,
+    currentBranch: missingBaseBranches[0],
+    branches: missingBaseBranches,
+    defaultBase: missingBaseBranches[1],
+  });
+
+  assert.deepEqual(requests.at(-1), {
+    repoRoot: "/repo",
+    baseRef: "trunk",
+    headRef: "release",
+  });
+});
+
+test("refresh from idle starts the refreshed default comparison", async () => {
+  const requests = [];
+  const backend = {
+    async getComparisonSummary(input) {
+      requests.push(input);
+      return summary(input.baseRef, input.headRef);
+    },
+  };
+  const controller = new SidebarReviewController(backend, () => {});
+
+  await controller.refresh(context);
+
+  assert.deepEqual(requests, [
+    { repoRoot: "/repo", baseRef: "main", headRef: "feature" },
+  ]);
+  assert.equal(controller.getState().status, "ready");
+});
+
+test("refresh clears file selection and supersedes its load", async () => {
+  const states = [];
+  const panelStates = [];
+  let resolveFile;
+  const backend = {
+    async getComparisonSummary(input) {
+      return summary(input.baseRef, input.headRef);
+    },
+    getFileDiff() {
+      return new Promise((resolve) => {
+        resolveFile = resolve;
+      });
+    },
+  };
+  const controller = new SidebarReviewController(
+    backend,
+    (state) => states.push(state),
+    (state) => panelStates.push(state),
+  );
+  await controller.start(context);
+  const fileLoad = controller.selectFile("main:feature", "file.ts");
+  await new Promise((resolve) => setImmediate(resolve));
+
+  await controller.refresh(context);
+  resolveFile({
+    path: "file.ts",
+    baseContent: "before\n",
+    headContent: "after\n",
+  });
+  await fileLoad;
+
+  assert.equal(states.at(-1).selectedPath, undefined);
+  assert.deepEqual(panelStates.at(-1), {
+    status: "noSelection",
+    baseRef: "main",
+    headRef: "feature",
+  });
+  assert.equal(
+    panelStates.filter((state) => state.status === "ready").length,
+    0,
+  );
+});
+
+test("older comparisons cannot replace a refreshed result", async () => {
+  const pending = [];
+  const backend = {
+    getComparisonSummary(input) {
+      return new Promise((resolve) => pending.push({ input, resolve }));
+    },
+  };
+  const controller = new SidebarReviewController(backend, () => {});
+  const initial = controller.start(context);
+  await new Promise((resolve) => setImmediate(resolve));
+
+  const refreshed = controller.refresh(context);
+  await new Promise((resolve) => setImmediate(resolve));
+  pending[1].resolve(summary("main", "feature", 0));
+  await refreshed;
+  pending[0].resolve(summary("main", "feature"));
+  await initial;
+
+  assert.equal(controller.getState().comparison.totals.files, 0);
+});
+
+test("refresh comparison failures use the existing error state", async () => {
+  let shouldFail = false;
+  const backend = {
+    async getComparisonSummary(input) {
+      if (shouldFail) {
+        throw new Error("refreshed comparison failed");
+      }
+      return summary(input.baseRef, input.headRef);
+    },
+  };
+  const controller = new SidebarReviewController(backend, () => {});
+  await controller.start(context);
+  shouldFail = true;
+
+  await controller.refresh(context);
+
+  assert.equal(controller.getState().status, "error");
+  assert.match(controller.getState().message, /refreshed comparison failed/);
+  assert.equal(controller.getState().baseRef, "main");
+  assert.equal(controller.getState().headRef, "feature");
+});

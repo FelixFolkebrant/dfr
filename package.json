@@ -32,8 +32,23 @@
         "command": "branchDiffReview.open",
         "title": "Open Branch Diff Review",
         "category": "Branch Diff Review"
+      },
+      {
+        "command": "branchDiffReview.refresh",
+        "title": "Refresh Branch Diff Review",
+        "category": "Branch Diff Review",
+        "icon": "$(refresh)"
       }
     ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "branchDiffReview.refresh",
+          "when": "view == branchDiffReview.sidebar",
+          "group": "navigation"
+        }
+      ]
+    },
     "viewsContainers": {
       "activitybar": [
         {

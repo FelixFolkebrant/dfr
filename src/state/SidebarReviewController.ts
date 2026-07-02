@@ -28,6 +28,25 @@ export class SidebarReviewController {
     );
   }
 
+  public async refresh(context: RepositoryContext): Promise<void> {
+    const previousBase =
+      this.state.status === "idle" ? undefined : this.state.baseRef;
+    const previousHead =
+      this.state.status === "idle" ? undefined : this.state.headRef;
+    const branches = new Set(context.branches.map((branch) => branch.name));
+    const canPreserveSelection =
+      previousBase !== undefined &&
+      previousHead !== undefined &&
+      branches.has(previousBase) &&
+      branches.has(previousHead);
+
+    this.repositoryContext = context;
+    await this.loadComparison(
+      canPreserveSelection ? previousBase : context.defaultBase.name,
+      canPreserveSelection ? previousHead : context.currentBranch.name,
+    );
+  }
+
   public async selectBranches(baseRef: string, headRef: string): Promise<void> {
     const context = this.repositoryContext;
     if (!context) {
