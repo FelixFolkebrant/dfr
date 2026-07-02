@@ -1,8 +1,12 @@
 import * as vscode from "vscode";
+import type { RepositoryContext } from "./git/GitBackend";
 import { getRepositoryContext } from "./git/getRepositoryContext";
 import { NativeGitBackend } from "./git/NativeGitBackend";
 import { NativeDiffView } from "./panel";
 import { BranchDiffSidebarProvider } from "./sidebar";
+
+const openCommand = "branchDiffReview.open";
+const refreshCommand = "branchDiffReview.refresh";
 
 export function activate(context: vscode.ExtensionContext): void {
   if (
@@ -32,20 +36,35 @@ export function activate(context: vscode.ExtensionContext): void {
       BranchDiffSidebarProvider.viewId,
       sidebarProvider,
     ),
-    vscode.commands.registerCommand("branchDiffReview.open", async () => {
-      try {
-        const repositoryContext = await getRepositoryContext(gitBackend);
-        if (!repositoryContext) {
-          return;
-        }
-
-        await sidebarProvider.startReview(repositoryContext);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        await vscode.window.showErrorMessage(
-          `Branch Diff Review could not start: ${message}`,
-        );
-      }
-    }),
+    vscode.commands.registerCommand(openCommand, () =>
+      discoverAndRun(gitBackend, "start", (repositoryContext) =>
+        sidebarProvider.startReview(repositoryContext),
+      ),
+    ),
+    vscode.commands.registerCommand(refreshCommand, () =>
+      discoverAndRun(gitBackend, "refresh", (repositoryContext) =>
+        sidebarProvider.refreshReview(repositoryContext),
+      ),
+    ),
   );
+}
+
+async function discoverAndRun(
+  gitBackend: NativeGitBackend,
+  action: "start" | "refresh",
+  run: (repositoryContext: RepositoryContext) => Promise<void>,
+): Promise<void> {
+  try {
+    const repositoryContext = await getRepositoryContext(gitBackend);
+    if (!repositoryContext) {
+      return;
+    }
+
+    await run(repositoryContext);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    await vscode.window.showErrorMessage(
+      `Branch Diff Review could not ${action}: ${message}`,
+    );
+  }
 }
