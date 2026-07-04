@@ -13,6 +13,7 @@ export interface SidebarComparison {
   diffBaseRef: string;
   diffHeadRef: string;
   files: DiffFileSummary[];
+  repositoryFiles: string[];
   totals: ComparisonSummary["totals"];
 }
 

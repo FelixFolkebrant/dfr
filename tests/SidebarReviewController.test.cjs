@@ -69,6 +69,28 @@ test("publishes initial loading and comparison states", async () => {
   });
 });
 
+test("loads tracked repository paths for contextual display", async () => {
+  const fileRequests = [];
+  const backend = {
+    async getComparisonSummary(input) {
+      return summary(input.baseRef, input.headRef);
+    },
+    async getRepositoryFiles(repoRoot, ref) {
+      fileRequests.push([repoRoot, ref]);
+      return ["src/tracked.ts"];
+    },
+  };
+  const controller = new SidebarReviewController(backend, () => {});
+
+  await controller.start(context);
+
+  assert.deepEqual(fileRequests, [["/repo", "feature"]]);
+  assert.deepEqual(controller.getState().comparison.repositoryFiles, [
+    "file.ts",
+    "src/tracked.ts",
+  ]);
+});
+
 test("publishes actionable comparison errors and keeps the selection", async () => {
   const states = [];
   const backend = {

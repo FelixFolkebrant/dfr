@@ -1,4 +1,5 @@
 import type { FileStatus } from "../../../src/git/GitBackend";
+import type { DirectoryDisplay } from "../../../src/webviews/fileTree";
 
 interface IconProps {
   className?: string;
@@ -118,6 +119,83 @@ export function FolderChevronIcon({ expanded }: { expanded: boolean }) {
       width="16"
     >
       <path d="m5.75 3.5 4.5 4.5-4.5 4.5" />
+    </svg>
+  );
+}
+
+export function FolderIcon({
+  emphasized = false,
+  expanded,
+}: {
+  emphasized?: boolean;
+  expanded: boolean;
+}) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={`${strokeIcon} ${emphasized ? "text-[var(--vscode-sideBar-foreground)]" : "text-[var(--vscode-icon-foreground)]"}`}
+      height="16"
+      viewBox="0 0 16 16"
+      width="16"
+    >
+      <path
+        d={
+          expanded
+            ? "M1.5 5.5h13l-1.7 7H3.2l-1.7-7Zm.5 0V3.2h4l1.5 1.5H14v.8"
+            : "M1.5 3.2h4l1.5 1.5h7.5v7.8h-13V3.2Z"
+        }
+      />
+    </svg>
+  );
+}
+
+export function FullscreenIcon({ active }: { active: boolean }) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={strokeIcon}
+      height="16"
+      viewBox="0 0 16 16"
+      width="16"
+    >
+      {active ? (
+        <path d="M6 2v4H2m12 0h-4V2M2 10h4v4m4 0v-4h4" />
+      ) : (
+        <path d="M6 2H2v4m12 0V2h-4M2 10v4h4m4 0h4v-4" />
+      )}
+    </svg>
+  );
+}
+
+export function ChangesViewIcon({ view }: { view: DirectoryDisplay }) {
+  return (
+    <svg
+      aria-hidden="true"
+      className={strokeIcon}
+      height="16"
+      viewBox="0 0 16 16"
+      width="16"
+    >
+      {view === "flattened" && (
+        <>
+          <path d="M3 4h10M3 8h10M3 12h10" />
+          <path d="M1.5 4h.01M1.5 8h.01M1.5 12h.01" />
+        </>
+      )}
+      {view === "tree" && (
+        <>
+          <path d="M3 3v10M3 5h3M3 9h3M3 13h3" />
+          <path d="M7.5 5h5M7.5 9h5M7.5 13h5" />
+        </>
+      )}
+      {view === "contextual" && (
+        <>
+          <path d="M3 3v10M3 5h3M3 9h3M3 13h3" opacity=".45" />
+          <path d="M7.5 5h5M7.5 13h5" opacity=".45" />
+          <path d="M7.5 9h5" />
+          <circle cx="7" cy="9" fill="currentColor" r="1" stroke="none" />
+        </>
+      )}
     </svg>
   );
 }

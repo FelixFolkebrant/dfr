@@ -159,6 +159,20 @@ export class NativeGitBackend implements GitBackend {
     return this.diffService.getComparisonSummary(input);
   }
 
+  public async getRepositoryFiles(
+    repoRoot: string,
+    ref: string,
+  ): Promise<string[]> {
+    const { stdout } = await this.gitRunner.run(repoRoot, [
+      "ls-tree",
+      "-r",
+      "--name-only",
+      "-z",
+      ref,
+    ]);
+    return stdout.split("\0").filter(Boolean);
+  }
+
   public async getReviewDetails(
     input: ComparisonInput,
   ): Promise<ReviewDetails> {
