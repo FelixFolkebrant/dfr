@@ -1,6 +1,6 @@
 import { useId, useRef, useState } from "react";
 import type { ReviewCommit } from "../../../src/git/GitBackend";
-import { ArrowIcon, CopyIcon, DropdownIcon } from "./Icons";
+import { ArrowIcon, CheckIcon, CopyIcon, DropdownIcon } from "./Icons";
 import { SelectDropdown, useDismissOnOutsidePointer } from "./SelectDropdown";
 
 export type CommitNaming = "hash" | "hash-title" | "title";
@@ -96,7 +96,11 @@ export function CommitNavigation({
       </div>
       <button
         aria-label={copied ? "Commit hash copied" : "Copy commit hash"}
-        className="grid size-8 cursor-pointer place-items-center rounded-[5px] border-0 bg-transparent text-[var(--vscode-icon-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:outline-none disabled:cursor-default disabled:opacity-35 max-[240px]:w-7"
+        className={`grid size-8 cursor-pointer place-items-center rounded-[5px] border-0 focus-visible:outline-none disabled:cursor-default disabled:opacity-35 max-[240px]:w-7 ${
+          copied
+            ? "bg-[var(--vscode-list-activeSelectionBackground)] text-[var(--vscode-testing-iconPassed,var(--vscode-list-activeSelectionForeground))]"
+            : "bg-transparent text-[var(--vscode-icon-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:bg-[var(--vscode-toolbar-hoverBackground)]"
+        }`}
         disabled={disabled || !selected}
         onClick={async () => {
           if (!selected) return;
@@ -107,7 +111,7 @@ export function CommitNavigation({
         title={copied ? "Copied" : "Copy commit hash"}
         type="button"
       >
-        <CopyIcon />
+        {copied ? <CheckIcon /> : <CopyIcon />}
       </button>
       <button
         aria-label="Previous commit"
