@@ -1,12 +1,12 @@
-import type * as vscode from "vscode";
+import * as vscode from "vscode";
 
 import type { GitBackend, RepositoryContext } from "./git/GitBackend";
 import type { NativeDiffState } from "./panel";
 import { SidebarReviewController } from "./state/SidebarReviewController";
 import { getLocalResourceRoots, renderWebviewDocument } from "./webview";
-import type {
-  ExtensionToSidebarMessage,
-  SidebarToExtensionMessage,
+import {
+  type ExtensionToSidebarMessage,
+  isSidebarMessage,
 } from "./webviews/protocol";
 
 export class BranchDiffSidebarProvider implements vscode.WebviewViewProvider {
@@ -14,6 +14,7 @@ export class BranchDiffSidebarProvider implements vscode.WebviewViewProvider {
 
   private webview: vscode.Webview | undefined;
   private readonly controller: SidebarReviewController;
+  private repository: RepositoryContext["repository"] | undefined;
 
   constructor(
     private readonly extensionUri: vscode.Uri,
@@ -50,10 +51,12 @@ export class BranchDiffSidebarProvider implements vscode.WebviewViewProvider {
   }
 
   public async startReview(context: RepositoryContext): Promise<void> {
+    this.repository = context.repository;
     await this.controller.start(context);
   }
 
   public async refreshReview(context: RepositoryContext): Promise<void> {
+    this.repository = context.repository;
     await this.controller.refresh(context);
   }
 
@@ -69,6 +72,22 @@ export class BranchDiffSidebarProvider implements vscode.WebviewViewProvider {
 
     if (message.type === "selectFile") {
       await this.controller.selectFile(message.comparisonId, message.path);
+      return;
+    }
+
+    if (message.type === "selectCommit") {
+      await this.controller.selectCommit(message.sha);
+      return;
+    }
+
+    if (message.type === "openDocument") {
+      if (this.repository && this.controller.hasDocument(message.path)) {
+        const uri = vscode.Uri.joinPath(
+          this.repository.rootUri,
+          ...message.path.split("/"),
+        );
+        await vscode.window.showTextDocument(uri, { preview: true });
+      }
       return;
     }
 
@@ -88,33 +107,4 @@ export class BranchDiffSidebarProvider implements vscode.WebviewViewProvider {
     };
     await this.webview?.postMessage(message);
   }
-}
-
-function isSidebarMessage(
-  message: unknown,
-): message is SidebarToExtensionMessage {
-  if (!message || typeof message !== "object" || !("type" in message)) {
-    return false;
-  }
-
-  if (message.type === "ready") {
-    return true;
-  }
-
-  if (message.type === "selectFile") {
-    return (
-      "comparisonId" in message &&
-      typeof message.comparisonId === "string" &&
-      "path" in message &&
-      typeof message.path === "string"
-    );
-  }
-
-  return (
-    message.type === "selectBranches" &&
-    "baseRef" in message &&
-    typeof message.baseRef === "string" &&
-    "headRef" in message &&
-    typeof message.headRef === "string"
-  );
 }

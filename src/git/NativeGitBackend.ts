@@ -9,6 +9,7 @@ import type {
   FileDiffResult,
   GitBackend,
   Repository,
+  ReviewDetails,
 } from "./GitBackend";
 import { GitRunner } from "./GitRunner";
 
@@ -156,6 +157,12 @@ export class NativeGitBackend implements GitBackend {
     input: ComparisonInput,
   ): Promise<ComparisonSummary> {
     return this.diffService.getComparisonSummary(input);
+  }
+
+  public async getReviewDetails(
+    input: ComparisonInput,
+  ): Promise<ReviewDetails> {
+    return this.diffService.getReviewDetails(input);
   }
 
   public async getFileDiff(input: FileDiffInput): Promise<FileDiffResult> {

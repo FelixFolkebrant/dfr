@@ -2,6 +2,7 @@ import type {
   BranchRef,
   ComparisonSummary,
   DiffFileSummary,
+  ReviewDetails,
 } from "../git/GitBackend";
 
 export interface SidebarComparison {
@@ -9,6 +10,8 @@ export interface SidebarComparison {
   baseRef: string;
   headRef: string;
   mergeBase: string;
+  diffBaseRef: string;
+  diffHeadRef: string;
   files: DiffFileSummary[];
   totals: ComparisonSummary["totals"];
 }
@@ -17,6 +20,8 @@ interface SidebarSelection {
   branches: BranchRef[];
   baseRef: string;
   headRef: string;
+  review: ReviewDetails | undefined;
+  selectedCommitSha: string | undefined;
 }
 
 export type SidebarState =
@@ -37,4 +42,39 @@ export type ExtensionToSidebarMessage = {
 export type SidebarToExtensionMessage =
   | { type: "ready" }
   | { type: "selectBranches"; baseRef: string; headRef: string }
+  | { type: "selectCommit"; sha?: string }
+  | { type: "openDocument"; path: string }
   | { type: "selectFile"; comparisonId: string; path: string };
+
+export function isSidebarMessage(
+  message: unknown,
+): message is SidebarToExtensionMessage {
+  if (!message || typeof message !== "object" || !("type" in message)) {
+    return false;
+  }
+
+  if (message.type === "ready") {
+    return true;
+  }
+  if (message.type === "selectFile") {
+    return (
+      "comparisonId" in message &&
+      typeof message.comparisonId === "string" &&
+      "path" in message &&
+      typeof message.path === "string"
+    );
+  }
+  if (message.type === "selectCommit") {
+    return !("sha" in message) || typeof message.sha === "string";
+  }
+  if (message.type === "openDocument") {
+    return "path" in message && typeof message.path === "string";
+  }
+  return (
+    message.type === "selectBranches" &&
+    "baseRef" in message &&
+    typeof message.baseRef === "string" &&
+    "headRef" in message &&
+    typeof message.headRef === "string"
+  );
+}

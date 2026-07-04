@@ -4,6 +4,9 @@ const { test } = require("node:test");
 const {
   DiffService,
   combineDiffOutput,
+  extractIssueKeys,
+  findRelatedDocuments,
+  parseCommitLog,
   parseNameStatus,
 } = require("../dist/git/DiffService.js");
 
@@ -225,6 +228,121 @@ test("reports selected-file content failures with comparison context", async () 
         path: "missing.ts",
         status: "modified",
       }),
-    /Could not load missing\.ts between merge base abc123 and feature: missing blob/,
+    /Could not load missing\.ts between abc123 and feature: missing blob/,
+  );
+});
+
+test("parses oldest-first commit metadata", () => {
+  const output = [
+    "\x1eaaaaaaaa\x1faaaaaaa\x1fparent-a\x1fIS-010: first\x1fIS-010: first\n\nBody\n",
+    "\x1ebbbbbbbb\x1fbbbbbbb\x1fparent-b parent-2\x1fIS-010: second\x1fIS-010: second\n",
+  ].join("\n");
+
+  assert.deepEqual(parseCommitLog(output), [
+    {
+      sha: "aaaaaaaa",
+      shortSha: "aaaaaaa",
+      parentSha: "parent-a",
+      subject: "IS-010: first",
+      message: "IS-010: first\n\nBody",
+    },
+    {
+      sha: "bbbbbbbb",
+      shortSha: "bbbbbbb",
+      parentSha: "parent-b",
+      subject: "IS-010: second",
+      message: "IS-010: second",
+    },
+  ]);
+});
+
+test("normalizes issue keys without crossing namespaces", () => {
+  assert.deepEqual(extractIssueKeys("user/GH-001/work for #02 and gl_3"), [
+    { namespace: "GH", number: 1 },
+    { namespace: "#", number: 2 },
+    { namespace: "GL", number: 3 },
+  ]);
+
+  assert.deepEqual(
+    findRelatedDocuments(
+      "user/GH-1/work",
+      [{ subject: "Also addresses #2" }, { subject: "GL-003: follow-up" }],
+      [
+        "docs/GH-001-PLAN.md",
+        "docs/GH-10.md",
+        "docs/GL-003.md",
+        "docs/IS-001.md",
+        "notes/#002.review.markdown",
+        "notes/random-GH-1.md",
+      ],
+    ),
+    ["docs/GH-001-PLAN.md", "docs/GL-003.md", "notes/#002.review.markdown"],
+  );
+});
+
+test("loads review commits and matching tracked Markdown documents", async () => {
+  const calls = [];
+  const runner = {
+    async run(_cwd, args) {
+      calls.push(args);
+      if (args[0] === "merge-base") {
+        return { stdout: "base123\n", stderr: "" };
+      }
+      if (args[0] === "log") {
+        return {
+          stdout:
+            "\x1ecommit1\x1fcomm1\x1fbase123\x1fGH-001: change\x1fGH-001: change\n",
+          stderr: "",
+        };
+      }
+      return {
+        stdout: "docs/GH-1-PLAN.md\0docs/GL-001.md\0src/file.ts\0",
+        stderr: "",
+      };
+    },
+  };
+
+  const details = await new DiffService(runner).getReviewDetails({
+    repoRoot: "/repo",
+    baseRef: "main",
+    headRef: "feature/GH-001",
+  });
+
+  assert.equal(details.mergeBase, "base123");
+  assert.equal(details.commits[0].sha, "commit1");
+  assert.deepEqual(details.documents, ["docs/GH-1-PLAN.md"]);
+  assert.deepEqual(calls[1].slice(0, 3), ["log", "--reverse", "--topo-order"]);
+  assert.deepEqual(calls[2], ["ls-files", "-z"]);
+});
+
+test("uses an explicit parent-to-commit range", async () => {
+  const calls = [];
+  const runner = {
+    async run(_cwd, args) {
+      calls.push(args);
+      return args.includes("--name-status")
+        ? { stdout: "M\0file.ts\0", stderr: "" }
+        : { stdout: "1\t1\tfile.ts\0", stderr: "" };
+    },
+  };
+
+  const result = await new DiffService(runner).getComparisonSummary({
+    repoRoot: "/repo",
+    baseRef: "main",
+    headRef: "feature",
+    mergeBase: "branch-base",
+    diffBaseRef: "parent",
+    diffHeadRef: "commit",
+  });
+
+  assert.equal(result.id, "parent:commit");
+  assert.equal(result.mergeBase, "branch-base");
+  assert.equal(
+    calls.some((args) => args[0] === "merge-base"),
+    false,
+  );
+  assert.equal(
+    calls.every((args) => args.includes("parent") && args.includes("commit")),
+    true,
   );
 });

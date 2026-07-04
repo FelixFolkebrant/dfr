@@ -101,7 +101,11 @@ export function ChangedFileTree({
   };
 
   return (
-    <div aria-label="Changed files" className="file-tree" role="tree">
+    <div
+      aria-label="Changed files"
+      className="min-h-0 flex-1 overflow-y-auto border-t border-[var(--vscode-sideBar-border,var(--vscode-panel-border))] py-1 pr-0.5"
+      role="tree"
+    >
       {visibleNodes.map((item, index) => (
         <ChangedFileTreeRow
           expanded={expandedPaths.has(item.node.path)}

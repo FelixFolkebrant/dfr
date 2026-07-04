@@ -1,13 +1,13 @@
-import { type Dispatch, useEffect, useId, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import type { BranchRef } from "../../../src/git/GitBackend";
-import { BranchSelectList } from "./BranchSelectList";
-import { CurrentBranchMarker } from "./BranchSelectOption";
 import { DropdownIcon } from "./Icons";
+import { SelectDropdown, useDismissOnOutsidePointer } from "./SelectDropdown";
 
 interface BranchSelectProps {
   branches: BranchRef[];
   currentBranchName?: string;
   label: string;
+  hideLabel?: boolean;
   onChange(value: string): void;
   value: string;
 }
@@ -16,47 +16,21 @@ export function BranchSelect({
   branches,
   currentBranchName,
   label,
+  hideLabel = false,
   onChange,
   value,
 }: BranchSelectProps) {
   const id = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const optionRefs = useRef(new Map<number, HTMLDivElement>());
   const [open, setOpen] = useState(false);
-  const selectedIndex = Math.max(
-    0,
-    branches.findIndex((branch) => branch.name === value),
-  );
-  const [activeIndex, setActiveIndex] = useState(selectedIndex);
 
   useDismissOnOutsidePointer(rootRef, open, setOpen);
 
-  useEffect(() => {
-    if (open) {
-      optionRefs.current.get(activeIndex)?.focus();
-    }
-  }, [activeIndex, open]);
-
-  const openAt = (index: number) => {
-    setActiveIndex(index);
-    setOpen(true);
-  };
-
-  const choose = (index: number) => {
-    const branch = branches[index];
-    if (!branch) {
-      return;
-    }
-    onChange(branch.name);
+  const choose = (branchName: string) => {
+    onChange(branchName);
     setOpen(false);
     requestAnimationFrame(() => triggerRef.current?.focus());
-  };
-
-  const move = (offset: number) => {
-    setActiveIndex((current) =>
-      Math.min(branches.length - 1, Math.max(0, current + offset)),
-    );
   };
 
   const close = (restoreFocus: boolean) => {
@@ -67,8 +41,15 @@ export function BranchSelect({
   };
 
   return (
-    <div className="branch-select" ref={rootRef}>
-      <span className="branch-select-label" id={`${id}-label`}>
+    <div className="relative min-w-0" ref={rootRef}>
+      <span
+        className={
+          hideLabel
+            ? "sr-only"
+            : "mb-1.5 ml-2 block text-xs text-[var(--vscode-descriptionForeground)]"
+        }
+        id={`${id}-label`}
+      >
         {label}
       </span>
       <button
@@ -76,73 +57,76 @@ export function BranchSelect({
         aria-expanded={open}
         aria-haspopup="listbox"
         aria-labelledby={`${id}-label ${id}-value`}
-        className="branch-select-trigger"
+        className={`flex w-full min-w-0 cursor-pointer items-center justify-between gap-2 rounded-[9px] text-left text-[var(--vscode-dropdown-foreground)] focus-visible:bg-[var(--vscode-list-hoverBackground)] focus-visible:outline-none ${
+          hideLabel
+            ? "h-[38px] border-0 bg-transparent px-2.5 text-sm"
+            : "h-[42px] border border-[var(--vscode-dropdown-border,var(--vscode-contrastBorder,transparent))] bg-[var(--vscode-dropdown-background)] px-3"
+        }`}
         id={`${id}-value`}
-        onClick={() => (open ? setOpen(false) : openAt(selectedIndex))}
+        onClick={() => setOpen((current) => !current)}
         onKeyDown={(event) => {
           if (event.key === "ArrowDown" || event.key === "ArrowUp") {
             event.preventDefault();
-            openAt(
-              Math.min(
-                branches.length - 1,
-                Math.max(
-                  0,
-                  selectedIndex + (event.key === "ArrowDown" ? 1 : -1),
-                ),
-              ),
-            );
+            setOpen(true);
           }
         }}
         ref={triggerRef}
         role="combobox"
         type="button"
       >
-        <span className="branch-select-value">
-          {value === currentBranchName && <CurrentBranchMarker />}
-          <span className="branch-select-value-text">{value}</span>
+        <span className="flex min-w-0 items-center gap-1.5">
+          {value === currentBranchName && (
+            <CurrentBranchMarker large={hideLabel} />
+          )}
+          <span className="overflow-hidden text-ellipsis whitespace-nowrap">
+            {value}
+          </span>
         </span>
         <DropdownIcon />
       </button>
       {open && (
-        <BranchSelectList
-          activeIndex={activeIndex}
-          branches={branches}
-          currentBranchName={currentBranchName}
-          id={id}
-          onChoose={choose}
-          onClose={close}
-          onMove={move}
-          onSetActive={setActiveIndex}
-          register={(optionIndex, element) => {
-            if (element) {
-              optionRefs.current.set(optionIndex, element);
-            } else {
-              optionRefs.current.delete(optionIndex);
-            }
+        <SelectDropdown
+          foldedOptions={{
+            label: "Remote branches",
+            options: branches
+              .filter((branch) => branch.kind === "remote")
+              .map((branch) => ({
+                label: branch.name,
+                value: branch.name,
+              })),
           }}
-          value={value}
+          id={id}
+          label="Branches"
+          onClose={close}
+          onSelect={choose}
+          options={branches
+            .filter((branch) => branch.kind === "local")
+            .map((branch) => ({
+              label: branch.name,
+              leading:
+                branch.name === currentBranchName ? (
+                  <CurrentBranchMarker />
+                ) : undefined,
+              value: branch.name,
+            }))}
+          pinnedValue={currentBranchName}
+          selectedValue={value}
         />
       )}
     </div>
   );
 }
 
-function useDismissOnOutsidePointer(
-  rootRef: React.RefObject<HTMLElement | null>,
-  open: boolean,
-  setOpen: Dispatch<React.SetStateAction<boolean>>,
-) {
-  useEffect(() => {
-    if (!open) {
-      return;
-    }
-
-    const handlePointer = (event: PointerEvent) => {
-      if (!rootRef.current?.contains(event.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("pointerdown", handlePointer);
-    return () => document.removeEventListener("pointerdown", handlePointer);
-  }, [open, rootRef, setOpen]);
+function CurrentBranchMarker({ large = false }: { large?: boolean }) {
+  return (
+    <>
+      <span
+        className={`shrink-0 leading-none text-[var(--vscode-gitDecoration-addedResourceForeground)] ${large ? "text-xl" : "text-base"}`}
+        aria-hidden="true"
+      >
+        •
+      </span>
+      <span className="sr-only">Current branch: </span>
+    </>
+  );
 }
