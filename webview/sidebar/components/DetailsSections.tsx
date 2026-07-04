@@ -15,23 +15,34 @@ export function DetailsSections({
 }: DetailsSectionsProps) {
   const [messageOpen, setMessageOpen] = useState(false);
   const [docsOpen, setDocsOpen] = useState(true);
+  const messageHasBody = selectedCommit?.message.trim().includes("\n") ?? false;
 
   return (
     <div className="grid gap-[9px]">
       {selectedCommit && (
         <section className="min-w-0">
-          <DisclosureButton
-            expanded={messageOpen}
-            label="Message"
-            onClick={() => setMessageOpen((open) => !open)}
-          />
-          {messageOpen ? (
-            <p className="mt-[3px] px-[9px] whitespace-pre-wrap text-[var(--vscode-descriptionForeground)] [overflow-wrap:anywhere]">
-              {selectedCommit.message}
-            </p>
+          {messageHasBody ? (
+            <button
+              aria-expanded={messageOpen}
+              className="flex w-full cursor-pointer items-start gap-2 border-0 bg-transparent px-[9px] py-1 text-left text-[var(--vscode-descriptionForeground)] focus-visible:bg-[var(--vscode-list-hoverBackground)] focus-visible:outline-none"
+              onClick={() => setMessageOpen((open) => !open)}
+              type="button"
+            >
+              <span
+                className={
+                  messageOpen
+                    ? "min-w-0 flex-1 whitespace-pre-wrap [overflow-wrap:anywhere]"
+                    : "min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap"
+                }
+                title={messageOpen ? undefined : selectedCommit.subject}
+              >
+                {messageOpen ? selectedCommit.message : selectedCommit.subject}
+              </span>
+              <ChevronIcon expanded={messageOpen} />
+            </button>
           ) : (
             <p
-              className="mt-[3px] overflow-hidden px-[9px] text-ellipsis whitespace-nowrap text-[var(--vscode-descriptionForeground)]"
+              className="overflow-hidden px-[9px] py-1 text-ellipsis whitespace-nowrap text-[var(--vscode-descriptionForeground)]"
               title={selectedCommit.subject}
             >
               {selectedCommit.subject}
