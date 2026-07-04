@@ -3,7 +3,7 @@ const { readFile } = require("node:fs/promises");
 const { test } = require("node:test");
 const path = require("node:path");
 
-test("contributes and registers the sidebar refresh command", async () => {
+test("starts review automatically and contributes refresh", async () => {
   const packageJson = require("../package.json");
   const refreshCommand = packageJson.contributes.commands.find(
     (command) => command.command === "branchDiffReview.refresh",
@@ -30,5 +30,15 @@ test("contributes and registers the sidebar refresh command", async () => {
   assert.match(
     extensionSource,
     /registerCommand\(refreshCommand,[\s\S]*sidebarProvider\.refreshReview/,
+  );
+  assert.match(
+    extensionSource,
+    /void discoverAndRun\(gitBackend, "start",[\s\S]*sidebarProvider\.startReview/,
+  );
+  assert.equal(
+    packageJson.contributes.commands.some(
+      (command) => command.command === "branchDiffReview.open",
+    ),
+    false,
   );
 });

@@ -183,7 +183,7 @@ function SidebarEmptyState() {
       <section className="grid gap-2 p-3" aria-live="polite">
         <h1 className="text-sm">Branch changes</h1>
         <p className="text-[var(--vscode-descriptionForeground)]">
-          Run <strong>Open Branch Diff Review</strong> to compare branches.
+          Loading branch comparison…
         </p>
       </section>
     </main>
