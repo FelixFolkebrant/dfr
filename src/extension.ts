@@ -5,7 +5,6 @@ import { NativeGitBackend } from "./git/NativeGitBackend";
 import { NativeDiffView } from "./panel";
 import { BranchDiffSidebarProvider } from "./sidebar";
 
-const openCommand = "branchDiffReview.open";
 const refreshCommand = "branchDiffReview.refresh";
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -36,16 +35,15 @@ export function activate(context: vscode.ExtensionContext): void {
       BranchDiffSidebarProvider.viewId,
       sidebarProvider,
     ),
-    vscode.commands.registerCommand(openCommand, () =>
-      discoverAndRun(gitBackend, "start", (repositoryContext) =>
-        sidebarProvider.startReview(repositoryContext),
-      ),
-    ),
     vscode.commands.registerCommand(refreshCommand, () =>
       discoverAndRun(gitBackend, "refresh", (repositoryContext) =>
         sidebarProvider.refreshReview(repositoryContext),
       ),
     ),
+  );
+
+  void discoverAndRun(gitBackend, "start", (repositoryContext) =>
+    sidebarProvider.startReview(repositoryContext),
   );
 }
 
