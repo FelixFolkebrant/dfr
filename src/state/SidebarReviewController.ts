@@ -1,4 +1,8 @@
-import type { GitBackend, RepositoryContext } from "../git/GitBackend";
+import type {
+  GitBackend,
+  RepositoryContext,
+  ReviewDetails,
+} from "../git/GitBackend";
 import type { NativeDiffState } from "../panel";
 import type { SidebarState } from "../webviews/protocol";
 
@@ -61,6 +65,32 @@ export class SidebarReviewController {
     await this.loadComparison(baseRef, headRef);
   }
 
+  public async selectCommit(sha: string | undefined): Promise<void> {
+    if (this.state.status === "idle" || !this.state.review) {
+      return;
+    }
+    const commit = sha
+      ? this.state.review.commits.find((candidate) => candidate.sha === sha)
+      : undefined;
+    if (sha && !commit) {
+      return;
+    }
+
+    await this.loadScope(
+      this.state.baseRef,
+      this.state.headRef,
+      this.state.review,
+      commit?.sha,
+    );
+  }
+
+  public hasDocument(path: string): boolean {
+    return (
+      this.state.status !== "idle" &&
+      Boolean(this.state.review?.documents.includes(path))
+    );
+  }
+
   public async selectFile(comparisonId: string, path: string): Promise<void> {
     if (
       this.state.status !== "ready" ||
@@ -107,6 +137,8 @@ export class SidebarReviewController {
         baseRef: selection.baseRef,
         headRef: selection.headRef,
         mergeBase: this.state.comparison.mergeBase,
+        diffBaseRef: this.state.comparison.diffBaseRef,
+        diffHeadRef: this.state.comparison.diffHeadRef,
         path: selection.path,
         ...(selection.oldPath ? { oldPath: selection.oldPath } : {}),
         status: file.status,
@@ -148,6 +180,8 @@ export class SidebarReviewController {
       branches: context.branches,
       baseRef,
       headRef,
+      review: undefined,
+      selectedCommitSha: undefined,
     };
     this.state = { status: "loading", ...selection };
     await Promise.all([
@@ -156,23 +190,38 @@ export class SidebarReviewController {
     ]);
 
     try {
+      const review = await this.loadReviewDetails({
+        repoRoot: context.repository.rootUri.fsPath,
+        baseRef,
+        headRef,
+      });
       const summary = await this.gitBackend.getComparisonSummary({
         repoRoot: context.repository.rootUri.fsPath,
         baseRef,
         headRef,
+        ...(review ? { mergeBase: review.mergeBase } : {}),
       });
       if (request !== this.requestSequence) {
         return;
       }
 
+      const resolvedReview = review ?? {
+        mergeBase: summary.mergeBase,
+        commits: [],
+        documents: [],
+      };
+
       this.state = {
         status: "ready",
         ...selection,
+        review: resolvedReview,
         comparison: {
           id: summary.id,
           baseRef: summary.baseRef,
           headRef: summary.headRef,
           mergeBase: summary.mergeBase,
+          diffBaseRef: summary.diffBaseRef ?? summary.mergeBase,
+          diffHeadRef: summary.diffHeadRef ?? summary.headRef,
           files: summary.files,
           totals: summary.totals,
         },
@@ -190,5 +239,84 @@ export class SidebarReviewController {
     }
 
     await this.publish(this.state);
+  }
+
+  private async loadScope(
+    baseRef: string,
+    headRef: string,
+    review: ReviewDetails,
+    selectedCommitSha: string | undefined,
+  ): Promise<void> {
+    const context = this.repositoryContext;
+    if (!context) {
+      return;
+    }
+    const commit = selectedCommitSha
+      ? review.commits.find((candidate) => candidate.sha === selectedCommitSha)
+      : undefined;
+    const request = ++this.requestSequence;
+    this.diffRequestSequence += 1;
+    const selection = {
+      branches: context.branches,
+      baseRef,
+      headRef,
+      review,
+      selectedCommitSha,
+    };
+    this.state = { status: "loading", ...selection };
+    await Promise.all([
+      this.publish(this.state),
+      this.publishDiff({ status: "noSelection", baseRef, headRef }),
+    ]);
+
+    try {
+      const summary = await this.gitBackend.getComparisonSummary({
+        repoRoot: context.repository.rootUri.fsPath,
+        baseRef,
+        headRef,
+        mergeBase: review.mergeBase,
+        ...(commit
+          ? { diffBaseRef: commit.parentSha, diffHeadRef: commit.sha }
+          : {}),
+      });
+      if (request !== this.requestSequence) {
+        return;
+      }
+      this.state = {
+        status: "ready",
+        ...selection,
+        comparison: {
+          id: summary.id,
+          baseRef: summary.baseRef,
+          headRef: summary.headRef,
+          mergeBase: summary.mergeBase,
+          diffBaseRef: summary.diffBaseRef ?? summary.mergeBase,
+          diffHeadRef: summary.diffHeadRef ?? summary.headRef,
+          files: summary.files,
+          totals: summary.totals,
+        },
+      };
+    } catch (error) {
+      if (request !== this.requestSequence) {
+        return;
+      }
+      this.state = {
+        status: "error",
+        ...selection,
+        message: error instanceof Error ? error.message : String(error),
+      };
+    }
+    await this.publish(this.state);
+  }
+
+  private async loadReviewDetails(input: {
+    repoRoot: string;
+    baseRef: string;
+    headRef: string;
+  }): Promise<ReviewDetails | undefined> {
+    const backend = this.gitBackend as GitBackend & {
+      getReviewDetails?: GitBackend["getReviewDetails"];
+    };
+    return backend.getReviewDetails?.(input);
   }
 }

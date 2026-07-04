@@ -15,15 +15,14 @@ export function ChangedFilesSection({
   const ready = state.status === "ready" ? state : undefined;
 
   return (
-    <section className="changes">
-      <div className="changes-header">
-        <h2>Files changed</h2>
-        {ready && (
-          <span className="file-count">{ready.comparison.totals.files}</span>
-        )}
-      </div>
+    <section
+      className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+      aria-label="Changed files"
+    >
       {ready?.comparison.files.length === 0 && (
-        <p className="muted">No files changed in this comparison.</p>
+        <p className="px-[3px] py-[7px] leading-[1.45] text-[var(--vscode-descriptionForeground)]">
+          No files changed in this comparison.
+        </p>
       )}
       {ready && ready.comparison.files.length > 0 && (
         <ChangedFileTree
@@ -34,7 +33,9 @@ export function ChangedFilesSection({
         />
       )}
       {!ready && (
-        <p className="muted">Changed files appear after the comparison.</p>
+        <p className="px-[3px] py-[7px] text-[11px] leading-[1.45] text-[var(--vscode-descriptionForeground)]">
+          Changed files appear after the comparison.
+        </p>
       )}
     </section>
   );

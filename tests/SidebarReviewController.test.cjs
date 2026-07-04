@@ -25,6 +25,8 @@ function summary(baseRef, headRef, files = 1) {
     baseRef,
     headRef,
     mergeBase: "abc123",
+    diffBaseRef: "abc123",
+    diffHeadRef: headRef,
     files: files
       ? [
           {
@@ -198,6 +200,8 @@ test("loads renamed files with both paths", async () => {
       baseRef: "main",
       headRef: "feature",
       mergeBase: "abc123",
+      diffBaseRef: "abc123",
+      diffHeadRef: "feature",
       path: "new.ts",
       oldPath: "old.ts",
       status: "renamed",
@@ -501,4 +505,129 @@ test("refresh comparison failures use the existing error state", async () => {
   assert.match(controller.getState().message, /refreshed comparison failed/);
   assert.equal(controller.getState().baseRef, "main");
   assert.equal(controller.getState().headRef, "feature");
+});
+
+test("loads review metadata and switches between commit and All scopes", async () => {
+  const requests = [];
+  const commit = {
+    sha: "commit-sha",
+    shortSha: "commit-",
+    parentSha: "parent-sha",
+    subject: "IS-010: change",
+    message: "IS-010: change\n\nBody",
+  };
+  const backend = {
+    async getReviewDetails() {
+      return {
+        mergeBase: "abc123",
+        commits: [commit],
+        documents: ["docs/IS-010.md"],
+      };
+    },
+    async getComparisonSummary(input) {
+      requests.push(input);
+      return {
+        ...summary(input.baseRef, input.headRef),
+        id: `${input.diffBaseRef ?? "abc123"}:${input.diffHeadRef ?? input.headRef}`,
+        diffBaseRef: input.diffBaseRef ?? "abc123",
+        diffHeadRef: input.diffHeadRef ?? input.headRef,
+      };
+    },
+  };
+  const controller = new SidebarReviewController(backend, () => {});
+
+  await controller.start(context);
+  assert.deepEqual(controller.getState().review.commits, [commit]);
+  assert.equal(controller.hasDocument("docs/IS-010.md"), true);
+
+  await controller.selectCommit("commit-sha");
+  assert.equal(controller.getState().selectedCommitSha, "commit-sha");
+  assert.equal(controller.getState().comparison.id, "parent-sha:commit-sha");
+  assert.deepEqual(requests.at(-1), {
+    repoRoot: "/repo",
+    baseRef: "main",
+    headRef: "feature",
+    mergeBase: "abc123",
+    diffBaseRef: "parent-sha",
+    diffHeadRef: "commit-sha",
+  });
+
+  await controller.selectCommit(undefined);
+  assert.equal(controller.getState().selectedCommitSha, undefined);
+  assert.equal(controller.getState().comparison.id, "abc123:feature");
+});
+
+test("ignores commit and document requests outside review metadata", async () => {
+  let comparisons = 0;
+  const backend = {
+    async getReviewDetails() {
+      return { mergeBase: "abc123", commits: [], documents: [] };
+    },
+    async getComparisonSummary(input) {
+      comparisons += 1;
+      return summary(input.baseRef, input.headRef);
+    },
+  };
+  const controller = new SidebarReviewController(backend, () => {});
+  await controller.start(context);
+
+  await controller.selectCommit("unknown");
+
+  assert.equal(comparisons, 1);
+  assert.equal(controller.hasDocument("docs/IS-010.md"), false);
+});
+
+test("prevents a stale commit scope from replacing a newer selection", async () => {
+  const pending = new Map();
+  const commits = [
+    {
+      sha: "first",
+      shortSha: "first",
+      parentSha: "base",
+      subject: "First",
+      message: "First",
+    },
+    {
+      sha: "second",
+      shortSha: "second",
+      parentSha: "first",
+      subject: "Second",
+      message: "Second",
+    },
+  ];
+  const backend = {
+    async getReviewDetails() {
+      return { mergeBase: "base", commits, documents: [] };
+    },
+    getComparisonSummary(input) {
+      if (!input.diffHeadRef) {
+        return Promise.resolve(summary(input.baseRef, input.headRef));
+      }
+      return new Promise((resolve) => pending.set(input.diffHeadRef, resolve));
+    },
+  };
+  const controller = new SidebarReviewController(backend, () => {});
+  await controller.start(context);
+
+  const first = controller.selectCommit("first");
+  await new Promise((resolve) => setImmediate(resolve));
+  const second = controller.selectCommit("second");
+  await new Promise((resolve) => setImmediate(resolve));
+  pending.get("second")({
+    ...summary("main", "feature"),
+    id: "first:second",
+    diffBaseRef: "first",
+    diffHeadRef: "second",
+  });
+  await second;
+  pending.get("first")({
+    ...summary("main", "feature"),
+    id: "base:first",
+    diffBaseRef: "base",
+    diffHeadRef: "first",
+  });
+  await first;
+
+  assert.equal(controller.getState().selectedCommitSha, "second");
+  assert.equal(controller.getState().comparison.id, "first:second");
 });

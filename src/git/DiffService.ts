@@ -5,6 +5,8 @@ import type {
   FileDiffInput,
   FileDiffResult,
   FileStatus,
+  ReviewCommit,
+  ReviewDetails,
 } from "./GitBackend";
 import type { GitRunner } from "./GitRunner";
 
@@ -17,10 +19,47 @@ interface Numstat {
 export class DiffService {
   public constructor(private readonly gitRunner: GitRunner) {}
 
+  public async getReviewDetails(
+    input: ComparisonInput,
+  ): Promise<ReviewDetails> {
+    const mergeBase = await this.findMergeBase(input);
+
+    try {
+      const [log, trackedFiles] = await Promise.all([
+        this.gitRunner.run(input.repoRoot, [
+          "log",
+          "--reverse",
+          "--topo-order",
+          "--format=%x1e%H%x1f%h%x1f%P%x1f%s%x1f%B",
+          `${mergeBase}..${input.headRef}`,
+        ]),
+        this.gitRunner.run(input.repoRoot, ["ls-files", "-z"]),
+      ]);
+      const commits = parseCommitLog(log.stdout);
+      return {
+        mergeBase,
+        commits,
+        documents: findRelatedDocuments(
+          input.headRef,
+          commits,
+          nulTokens(trackedFiles.stdout).filter((path) =>
+            /\.md(?:own)?$/i.test(path),
+          ),
+        ),
+      };
+    } catch (error) {
+      throw new Error(
+        `Could not load review details for ${input.headRef}: ${errorMessage(error)}`,
+      );
+    }
+  }
+
   public async getComparisonSummary(
     input: ComparisonInput,
   ): Promise<ComparisonSummary> {
-    const mergeBase = await this.findMergeBase(input);
+    const mergeBase = input.mergeBase ?? (await this.findMergeBase(input));
+    const diffBaseRef = input.diffBaseRef ?? mergeBase;
+    const diffHeadRef = input.diffHeadRef ?? input.headRef;
 
     try {
       const [nameStatus, numstat] = await Promise.all([
@@ -29,24 +68,26 @@ export class DiffService {
           "--find-renames",
           "--name-status",
           "-z",
-          mergeBase,
-          input.headRef,
+          diffBaseRef,
+          diffHeadRef,
         ]),
         this.gitRunner.run(input.repoRoot, [
           "diff",
           "--find-renames",
           "--numstat",
           "-z",
-          mergeBase,
-          input.headRef,
+          diffBaseRef,
+          diffHeadRef,
         ]),
       ]);
       const files = combineDiffOutput(nameStatus.stdout, numstat.stdout);
 
       return {
-        id: `${mergeBase}:${input.headRef}`,
+        id: `${diffBaseRef}:${diffHeadRef}`,
         ...input,
         mergeBase,
+        diffBaseRef,
+        diffHeadRef,
         files,
         totals: {
           files: files.length,
@@ -62,7 +103,7 @@ export class DiffService {
       };
     } catch (error) {
       throw new Error(
-        `Could not compare ${input.headRef} with merge base ${mergeBase}: ${errorMessage(error)}`,
+        `Could not compare ${diffHeadRef} with ${diffBaseRef}: ${errorMessage(error)}`,
       );
     }
   }
@@ -74,12 +115,16 @@ export class DiffService {
           ? ""
           : this.readFile(
               input.repoRoot,
-              input.mergeBase,
+              input.diffBaseRef ?? input.mergeBase,
               input.oldPath ?? input.path,
             ),
         input.status === "deleted"
           ? ""
-          : this.readFile(input.repoRoot, input.headRef, input.path),
+          : this.readFile(
+              input.repoRoot,
+              input.diffHeadRef ?? input.headRef,
+              input.path,
+            ),
       ]);
       return {
         path: input.path,
@@ -89,7 +134,7 @@ export class DiffService {
       };
     } catch (error) {
       throw new Error(
-        `Could not load ${input.path} between merge base ${input.mergeBase} and ${input.headRef}: ${errorMessage(error)}`,
+        `Could not load ${input.path} between ${input.diffBaseRef ?? input.mergeBase} and ${input.diffHeadRef ?? input.headRef}: ${errorMessage(error)}`,
       );
     }
   }
@@ -124,6 +169,91 @@ export class DiffService {
       );
     }
   }
+}
+
+export function parseCommitLog(output: string): ReviewCommit[] {
+  return output
+    .split("\x1e")
+    .filter((record) => record.trim())
+    .map((record) => {
+      const [sha, shortSha, parents, subject, ...messageParts] = record
+        .replace(/^\n/, "")
+        .split("\x1f");
+      const parentSha = parents?.split(" ")[0];
+      if (!sha || !shortSha || !parentSha || subject === undefined) {
+        throw new Error("Malformed Git commit log output");
+      }
+      return {
+        sha,
+        shortSha,
+        parentSha,
+        subject,
+        message: messageParts.join("\x1f").trim(),
+      };
+    });
+}
+
+interface IssueKey {
+  namespace: string;
+  number: number;
+}
+
+const issueKeyPattern =
+  /(?:^|[^A-Za-z0-9])(?:#(0*\d+)|([A-Za-z][A-Za-z0-9]*)[-_](0*\d+))(?=$|[^A-Za-z0-9])/g;
+const filenameIssueKeyPattern =
+  /^(?:#(0*\d+)|([A-Za-z][A-Za-z0-9]*)[-_](0*\d+))(?=$|[-_. ])/;
+
+export function extractIssueKeys(value: string): IssueKey[] {
+  return Array.from(value.matchAll(issueKeyPattern), (match) => ({
+    namespace: match[1] === undefined ? (match[2] ?? "").toUpperCase() : "#",
+    number: Number.parseInt(match[1] ?? match[3] ?? "", 10),
+  })).filter(({ number }) => Number.isSafeInteger(number));
+}
+
+export function findRelatedDocuments(
+  branch: string,
+  commits: Pick<ReviewCommit, "subject">[],
+  paths: string[],
+): string[] {
+  const candidates = uniqueIssueKeys([
+    ...extractIssueKeys(branch),
+    ...commits.flatMap(({ subject }) => extractIssueKeys(subject)),
+  ]);
+  if (candidates.length === 0) {
+    return [];
+  }
+
+  return paths
+    .filter((path) => {
+      const basename = path.split("/").at(-1) ?? path;
+      const match = basename.match(filenameIssueKeyPattern);
+      if (!match) {
+        return false;
+      }
+      const key = {
+        namespace:
+          match[1] === undefined ? (match[2] ?? "").toUpperCase() : "#",
+        number: Number.parseInt(match[1] ?? match[3] ?? "", 10),
+      };
+      return candidates.some(
+        (candidate) =>
+          candidate.namespace === key.namespace &&
+          candidate.number === key.number,
+      );
+    })
+    .sort((left, right) => left.localeCompare(right));
+}
+
+function uniqueIssueKeys(keys: IssueKey[]): IssueKey[] {
+  const seen = new Set<string>();
+  return keys.filter((key) => {
+    const canonical = `${key.namespace}:${key.number}`;
+    if (seen.has(canonical)) {
+      return false;
+    }
+    seen.add(canonical);
+    return true;
+  });
 }
 
 export function combineDiffOutput(

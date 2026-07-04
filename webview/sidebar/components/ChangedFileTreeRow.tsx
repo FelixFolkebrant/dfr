@@ -40,7 +40,7 @@ export function ChangedFileTreeRow({
       aria-expanded={isFolder ? expanded : undefined}
       aria-level={item.level}
       aria-selected={isFolder ? undefined : selected}
-      className={`file-tree-row file-tree-row--${node.kind}`}
+      className={`flex h-7 w-full min-w-0 cursor-pointer items-center gap-1.5 border-0 bg-transparent pr-[5px] pl-[calc(3px+(var(--tree-level)-1)*12px)] text-left text-[var(--vscode-sideBar-foreground)] hover:bg-[var(--vscode-list-hoverBackground)] focus-visible:bg-[var(--vscode-list-hoverBackground)] focus-visible:outline-none ${selected && !isFolder ? "bg-[var(--vscode-list-activeSelectionBackground)] text-[var(--vscode-list-activeSelectionForeground)]" : ""}`}
       data-status={node.file?.status}
       onClick={onActivate}
       onFocus={onFocus}
@@ -51,14 +51,21 @@ export function ChangedFileTreeRow({
       tabIndex={focused ? 0 : -1}
       type="button"
     >
-      <span className="file-tree-leading" aria-hidden="true">
+      <span
+        className="grid size-[18px] shrink-0 place-items-center"
+        aria-hidden="true"
+      >
         {isFolder ? (
-          <FolderChevronIcon />
+          <FolderChevronIcon expanded={expanded} />
         ) : (
           <FileStatusIcon status={node.file?.status ?? "unknown"} />
         )}
       </span>
-      <span className="file-tree-name">{node.name}</span>
+      <span
+        className={`min-w-0 overflow-hidden text-ellipsis whitespace-nowrap ${isFolder ? "font-semibold opacity-55" : ""}`}
+      >
+        {node.name}
+      </span>
       {node.file && <FileMetadata file={node.file} />}
     </button>
   );
@@ -66,17 +73,23 @@ export function ChangedFileTreeRow({
 
 function FileMetadata({ file }: { file: DiffFileSummary }) {
   return (
-    <span className="file-tree-metadata">
+    <span className="ml-auto flex shrink-0 items-center gap-1.5 text-[11px] font-semibold tabular-nums">
       <span className="sr-only">{statusLabels[file.status]}. </span>
       {file.isBinary ? (
-        <span className="file-tree-binary">Binary</span>
+        <span className="font-normal text-[var(--vscode-descriptionForeground)]">
+          Binary
+        </span>
       ) : (
         <>
           {file.additions ? (
-            <span className="file-tree-additions">+{file.additions}</span>
+            <span className="text-[var(--vscode-gitDecoration-addedResourceForeground)]">
+              +{file.additions}
+            </span>
           ) : null}
           {file.deletions ? (
-            <span className="file-tree-deletions">-{file.deletions}</span>
+            <span className="text-[var(--vscode-gitDecoration-deletedResourceForeground)]">
+              -{file.deletions}
+            </span>
           ) : null}
         </>
       )}
