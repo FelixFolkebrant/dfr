@@ -36,9 +36,12 @@ export function CommitNavigation({
 
   return (
     <nav
-      className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_34px_34px_34px] items-center gap-[5px] px-[3px] max-[240px]:grid-cols-[minmax(0,1fr)_auto_30px_30px_30px] max-[240px]:gap-0.5"
+      className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_34px_34px_34px] items-center gap-[5px] px-[3px] max-[240px]:grid-cols-[auto_minmax(0,1fr)_30px_30px_30px] max-[240px]:gap-0.5"
       aria-label="Commit navigation"
     >
+      <span className="shrink-0 whitespace-nowrap text-sm font-semibold text-[var(--vscode-descriptionForeground)] tabular-nums">
+        {selected ? `${index + 1}/${commits.length}` : ""}
+      </span>
       <div className="relative min-w-0" ref={rootRef}>
         <button
           aria-controls={`${id}-listbox`}
@@ -91,9 +94,6 @@ export function CommitNavigation({
           />
         )}
       </div>
-      <span className="shrink-0 whitespace-nowrap text-xs font-medium text-[var(--vscode-descriptionForeground)] tabular-nums">
-        {selected ? `${index + 1}/${commits.length}` : ""}
-      </span>
       <button
         aria-label={copied ? "Commit hash copied" : "Copy commit hash"}
         className="grid size-8 cursor-pointer place-items-center rounded-[5px] border-0 bg-transparent text-[var(--vscode-icon-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:outline-none disabled:cursor-default disabled:opacity-35 max-[240px]:w-7"
@@ -112,8 +112,16 @@ export function CommitNavigation({
       <button
         aria-label="Previous commit"
         className="grid size-8 cursor-pointer place-items-center rounded-[5px] border-0 bg-transparent text-[var(--vscode-icon-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] hover:text-[var(--vscode-toolbar-activeForeground,var(--vscode-foreground))] focus-visible:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:outline-none disabled:cursor-default disabled:opacity-35 max-[240px]:w-7"
-        disabled={disabled || !selected || index === 0}
-        onClick={() => onChange(commits[index - 1]?.sha)}
+        disabled={disabled || commits.length === 0}
+        onClick={() =>
+          onChange(
+            selected && index > 0
+              ? commits[index - 1]?.sha
+              : selected
+                ? undefined
+                : commits.at(-1)?.sha,
+          )
+        }
         type="button"
       >
         <ArrowIcon direction="left" />
@@ -121,8 +129,16 @@ export function CommitNavigation({
       <button
         aria-label="Next commit"
         className="grid size-8 cursor-pointer place-items-center rounded-[5px] border-0 bg-transparent text-[var(--vscode-icon-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] hover:text-[var(--vscode-toolbar-activeForeground,var(--vscode-foreground))] focus-visible:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:outline-none disabled:cursor-default disabled:opacity-35 max-[240px]:w-7"
-        disabled={disabled || !selected || index === commits.length - 1}
-        onClick={() => onChange(commits[index + 1]?.sha)}
+        disabled={disabled || commits.length === 0}
+        onClick={() =>
+          onChange(
+            selected && index < commits.length - 1
+              ? commits[index + 1]?.sha
+              : selected
+                ? undefined
+                : commits[0]?.sha,
+          )
+        }
         type="button"
       >
         <ArrowIcon direction="right" />
