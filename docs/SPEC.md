@@ -40,7 +40,7 @@ Allow a user to open VS Code, open the extension window in the left sidebar, and
 
 ### MVP features
 
-- VS Code command: **Open Branch Diff Review**.
+- Start Branch Diff Review automatically when the extension activates.
 - Automatically detect the active Git repository.
 - Automatically detect the current branch.
 - Automatically choose a default base branch, preferably in this order:
@@ -524,7 +524,7 @@ This is intentionally lighter than a full implementation breakdown.
 The MVP is done when:
 
 - I can open a Git repository in VS Code.
-- I can run **Open Branch Diff Review**.
+- Branch Diff Review starts without requiring a command.
 - The extension automatically compares my current branch to `main` or `master`.
 - I can see a tree of changed files.
 - I can click a file and see its diff.
