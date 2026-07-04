@@ -1,24 +1,20 @@
 import type { DirectoryDisplay } from "../../../src/webviews/fileTree";
 import type { SidebarState } from "../../../src/webviews/protocol";
 import { ChangedFileTree } from "./ChangedFileTree";
-import { ChangesViewIcon, FullscreenIcon } from "./Icons";
+import { ChangesViewIcon } from "./Icons";
 
 type ActiveSidebarState = Exclude<SidebarState, { status: "idle" }>;
 
 interface ChangedFilesSectionProps {
   directoryDisplay: DirectoryDisplay;
-  fullscreen: boolean;
   onDirectoryDisplayChange(value: DirectoryDisplay): void;
-  onFullscreenChange(value: boolean): void;
   onSelect(comparisonId: string, path: string): void;
   state: ActiveSidebarState;
 }
 
 export function ChangedFilesSection({
   directoryDisplay,
-  fullscreen,
   onDirectoryDisplayChange,
-  onFullscreenChange,
   onSelect,
   state,
 }: ChangedFilesSectionProps) {
@@ -56,18 +52,6 @@ export function ChangedFilesSection({
               </button>
             ))}
           </fieldset>
-          <button
-            aria-label={
-              fullscreen ? "Exit fullscreen" : "Show changes fullscreen"
-            }
-            aria-pressed={fullscreen}
-            className="grid size-6 cursor-pointer place-items-center rounded border-0 bg-transparent text-[var(--vscode-icon-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--vscode-focusBorder)] aria-pressed:bg-[var(--vscode-toolbar-hoverBackground)] aria-pressed:text-[var(--vscode-toolbar-activeForeground,var(--vscode-foreground))]"
-            onClick={() => onFullscreenChange(!fullscreen)}
-            title={fullscreen ? "Exit fullscreen" : "Show changes fullscreen"}
-            type="button"
-          >
-            <FullscreenIcon active={fullscreen} />
-          </button>
         </div>
       </div>
       {ready?.comparison.files.length === 0 && (

@@ -149,24 +149,6 @@ export function FolderIcon({
   );
 }
 
-export function FullscreenIcon({ active }: { active: boolean }) {
-  return (
-    <svg
-      aria-hidden="true"
-      className={strokeIcon}
-      height="16"
-      viewBox="0 0 16 16"
-      width="16"
-    >
-      {active ? (
-        <path d="M6 2v4H2m12 0h-4V2M2 10h4v4m4 0v-4h4" />
-      ) : (
-        <path d="M6 2H2v4m12 0V2h-4M2 10v4h4m4 0h4v-4" />
-      )}
-    </svg>
-  );
-}
-
 export function ChangesViewIcon({ view }: { view: DirectoryDisplay }) {
   return (
     <svg
