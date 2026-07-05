@@ -1,16 +1,35 @@
 {
-  "name": "tsup",
-  "displayName": "Branch Diff Review",
-  "description": "Local branch diff review for VS Code.",
+  "name": "dfr",
+  "displayName": "DFR",
+  "description": "Review branch changes and commits in a focused, local pull-request-style workflow.",
   "version": "0.0.1",
   "private": true,
   "publisher": "felixfolkebrant",
-  "license": "UNLICENSED",
+  "author": "Felix Folkebrant",
+  "license": "MIT",
+  "icon": "media/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/FelixFolkebrant/tsup.git"
+  },
+  "homepage": "https://github.com/FelixFolkebrant/tsup#readme",
+  "bugs": {
+    "url": "https://github.com/FelixFolkebrant/tsup/issues"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },
   "categories": [
-    "Other"
+    "SCM Providers"
+  ],
+  "keywords": [
+    "git",
+    "diff",
+    "branch",
+    "code review",
+    "pull request",
+    "source control",
+    "scm"
   ],
   "activationEvents": [
     "onStartupFinished"
@@ -18,7 +37,7 @@
   "main": "./dist/extension.js",
   "contributes": {
     "configuration": {
-      "title": "Branch Diff Review",
+      "title": "DFR",
       "properties": {
         "branchDiffReview.defaultBaseBranch": {
           "type": "string",
@@ -30,8 +49,8 @@
     "commands": [
       {
         "command": "branchDiffReview.refresh",
-        "title": "Refresh Branch Diff Review",
-        "category": "Branch Diff Review",
+        "title": "DFR: Refresh",
+        "category": "DFR",
         "icon": "$(refresh)"
       }
     ],
@@ -48,7 +67,7 @@
       "activitybar": [
         {
           "id": "branchDiffReview",
-          "title": "Branch Diff",
+          "title": "DFR",
           "icon": "media/activity.svg"
         }
       ]
@@ -57,14 +76,14 @@
       "branchDiffReview": [
         {
           "id": "branchDiffReview.sidebar",
-          "name": "Branch Diff",
+          "name": "DFR",
           "type": "webview"
         }
       ]
     }
   },
   "scripts": {
-    "build": "pnpm build:extension && pnpm build:webview",
+    "build": "pnpm clean && pnpm build:extension && pnpm build:webview",
     "build:extension": "tsc -p tsconfig.json",
     "build:webview": "node scripts/build-webviews.mjs",
     "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm build",
@@ -77,18 +96,17 @@
     "typecheck:webview": "tsc -p tsconfig.webview.json --noEmit",
     "vscode:prepublish": "pnpm build"
   },
-  "dependencies": {
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7"
-  },
   "devDependencies": {
     "@biomejs/biome": "^2.5.1",
     "@tailwindcss/cli": "^4.3.1",
     "@types/node": "^24.0.12",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "@types/vscode": "^1.85.0",
+    "@types/vscode": "1.85.0",
+    "@vscode/vsce": "3.9.2",
     "esbuild": "^0.25.6",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "tailwindcss": "^4.3.1",
     "typescript": "^5.8.3"
   }
