@@ -2,30 +2,52 @@ import { type KeyboardEvent, useMemo, useRef, useState } from "react";
 import type { DiffFileSummary } from "../../../src/git/GitBackend";
 import {
   buildChangedFileTree,
+  buildContextualFileTree,
+  type DirectoryDisplay,
+  flattenChangedFiles,
   flattenChangedFileTree,
+  getChangedAncestorPaths,
   getFolderPaths,
   type VisibleChangedFileTreeNode,
 } from "../../../src/webviews/fileTree";
 import { ChangedFileTreeRow } from "./ChangedFileTreeRow";
 
 interface ChangedFileTreeProps {
+  directoryDisplay: DirectoryDisplay;
   files: DiffFileSummary[];
+  repositoryFiles: string[];
   onSelect(path: string): void;
   selectedPath?: string;
 }
 
 export function ChangedFileTree({
+  directoryDisplay,
   files,
+  repositoryFiles,
   onSelect,
   selectedPath,
 }: ChangedFileTreeProps) {
-  const nodes = useMemo(() => buildChangedFileTree(files), [files]);
+  const nodes = useMemo(
+    () =>
+      directoryDisplay === "contextual"
+        ? buildContextualFileTree(repositoryFiles, files)
+        : buildChangedFileTree(files),
+    [directoryDisplay, files, repositoryFiles],
+  );
   const [expandedPaths, setExpandedPaths] = useState(
-    () => new Set(getFolderPaths(nodes)),
+    () =>
+      new Set(
+        directoryDisplay === "contextual"
+          ? getChangedAncestorPaths(files)
+          : getFolderPaths(nodes),
+      ),
   );
   const visibleNodes = useMemo(
-    () => flattenChangedFileTree(nodes, expandedPaths),
-    [expandedPaths, nodes],
+    () =>
+      directoryDisplay === "flattened"
+        ? flattenChangedFiles(files, expandedPaths)
+        : flattenChangedFileTree(nodes, expandedPaths),
+    [directoryDisplay, expandedPaths, files, nodes],
   );
   const [focusedPath, setFocusedPath] = useState(
     selectedPath ?? visibleNodes[0]?.node.path,
@@ -57,7 +79,7 @@ export function ChangedFileTree({
     const { node } = item;
     if (node.kind === "folder") {
       toggleFolder(node.path);
-    } else {
+    } else if (node.file) {
       onSelect(node.path);
     }
   };
@@ -109,6 +131,7 @@ export function ChangedFileTree({
       {visibleNodes.map((item, index) => (
         <ChangedFileTreeRow
           expanded={expandedPaths.has(item.node.path)}
+          directoryDisplay={directoryDisplay}
           focused={item.node.path === focusedPath}
           item={item}
           key={item.node.path}

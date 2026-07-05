@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { DirectoryDisplay } from "../../src/webviews/fileTree";
 import type {
   ExtensionToSidebarMessage,
   SidebarState,
@@ -12,7 +13,6 @@ import {
 } from "./components/CommitNavigation";
 import { ComparisonStatus } from "./components/ComparisonStatus";
 import { DetailsSections } from "./components/DetailsSections";
-import { GearIcon } from "./components/Icons";
 
 interface VsCodeApi {
   postMessage(message: SidebarToExtensionMessage): void;
@@ -26,6 +26,8 @@ export function Sidebar() {
   const [state, setState] = useState<SidebarState>({ status: "idle" });
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [commitNaming, setCommitNaming] = useState<CommitNaming>("hash");
+  const [directoryDisplay, setDirectoryDisplay] =
+    useState<DirectoryDisplay>("flattened");
 
   useEffect(() => {
     const receiveMessage = (event: MessageEvent<ExtensionToSidebarMessage>) => {
@@ -44,43 +46,39 @@ export function Sidebar() {
 
   return (
     <main className="flex h-full min-w-0 flex-col gap-3.5 overflow-hidden bg-[var(--vscode-sideBar-background)] px-3 pt-3.5 pb-3 text-[length:var(--vscode-font-size)] text-[var(--vscode-sideBar-foreground)] [color-scheme:light_dark] [font-family:var(--vscode-font-family)]">
-      <div className="grid shrink-0 grid-cols-[minmax(0,1fr)_36px] items-center gap-0.5 rounded-[10px] border border-[var(--vscode-dropdown-border,var(--vscode-contrastBorder,transparent))] bg-[var(--vscode-dropdown-background)] p-1">
-        <BranchSelect
-          branches={state.branches}
-          currentBranchName={
-            state.branches.find((branch) => branch.current)?.name
-          }
-          hideLabel
-          label="Review branch"
-          onChange={(headRef) =>
-            vscode.postMessage({
-              type: "selectBranches",
-              baseRef: state.baseRef,
-              headRef,
-            })
-          }
-          value={state.headRef}
-        />
-        <button
-          aria-label={
-            settingsOpen
-              ? "Close comparison settings"
-              : "Open comparison settings"
-          }
-          aria-pressed={settingsOpen}
-          className="grid size-[34px] cursor-pointer place-items-center rounded-md border-0 bg-transparent text-[var(--vscode-icon-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] hover:text-[var(--vscode-toolbar-activeForeground,var(--vscode-foreground))] focus-visible:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:outline-none aria-pressed:bg-[var(--vscode-toolbar-hoverBackground)] aria-pressed:text-[var(--vscode-toolbar-activeForeground,var(--vscode-foreground))]"
-          onClick={() => setSettingsOpen((open) => !open)}
-          title="Comparison settings"
-          type="button"
-        >
-          <GearIcon />
-        </button>
-      </div>
+      <CommitNavigation
+        commits={state.review?.commits ?? []}
+        disabled={!state.review}
+        naming={commitNaming}
+        onChange={(sha) =>
+          vscode.postMessage(
+            sha ? { type: "selectCommit", sha } : { type: "selectCommit" },
+          )
+        }
+        onSettingsToggle={() => setSettingsOpen((open) => !open)}
+        selectedSha={state.selectedCommitSha}
+        settingsOpen={settingsOpen}
+      />
       {settingsOpen ? (
         <section
           className="flex min-w-0 flex-col gap-3.5 pt-0.5"
           aria-label="Comparison settings"
         >
+          <BranchSelect
+            branches={state.branches}
+            currentBranchName={
+              state.branches.find((branch) => branch.current)?.name
+            }
+            label="Review branch"
+            onChange={(headRef) =>
+              vscode.postMessage({
+                type: "selectBranches",
+                baseRef: state.baseRef,
+                headRef,
+              })
+            }
+            value={state.headRef}
+          />
           <BranchSelect
             branches={state.branches}
             currentBranchName={
@@ -124,36 +122,30 @@ export function Sidebar() {
           </fieldset>
         </section>
       ) : (
-        <Review commitNaming={commitNaming} state={state} />
+        <Review
+          directoryDisplay={directoryDisplay}
+          onDirectoryDisplayChange={setDirectoryDisplay}
+          state={state}
+        />
       )}
     </main>
   );
 }
 
 function Review({
-  commitNaming,
+  directoryDisplay,
+  onDirectoryDisplayChange,
   state,
 }: {
-  commitNaming: CommitNaming;
+  directoryDisplay: DirectoryDisplay;
+  onDirectoryDisplayChange(value: DirectoryDisplay): void;
   state: Exclude<SidebarState, { status: "idle" }>;
 }) {
   const selectedCommit = state.review?.commits.find(
     (commit) => commit.sha === state.selectedCommitSha,
   );
-  const selectCommit = (sha: string | undefined) =>
-    vscode.postMessage(
-      sha ? { type: "selectCommit", sha } : { type: "selectCommit" },
-    );
-
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3.5">
-      <CommitNavigation
-        commits={state.review?.commits ?? []}
-        disabled={!state.review}
-        naming={commitNaming}
-        onChange={selectCommit}
-        selectedSha={state.selectedCommitSha}
-      />
       {state.review && state.review.commits.length === 0 && (
         <p className="px-[3px] py-[7px] text-[11px] leading-[1.45] text-[var(--vscode-descriptionForeground)]">
           No commits were introduced by this branch.
@@ -168,6 +160,8 @@ function Review({
       />
       <ComparisonStatus state={state} />
       <ChangedFilesSection
+        directoryDisplay={directoryDisplay}
+        onDirectoryDisplayChange={onDirectoryDisplayChange}
         onSelect={(comparisonId, path) =>
           vscode.postMessage({ type: "selectFile", comparisonId, path })
         }

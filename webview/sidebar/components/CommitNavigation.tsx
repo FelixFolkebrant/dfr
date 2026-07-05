@@ -1,6 +1,12 @@
 import { useId, useRef, useState } from "react";
 import type { ReviewCommit } from "../../../src/git/GitBackend";
-import { ArrowIcon, CheckIcon, CopyIcon, DropdownIcon } from "./Icons";
+import {
+  ArrowIcon,
+  CheckIcon,
+  CopyIcon,
+  DropdownIcon,
+  GearIcon,
+} from "./Icons";
 import { SelectDropdown, useDismissOnOutsidePointer } from "./SelectDropdown";
 
 export type CommitNaming = "hash" | "hash-title" | "title";
@@ -10,7 +16,9 @@ interface CommitNavigationProps {
   disabled: boolean;
   naming: CommitNaming;
   onChange(sha: string | undefined): void;
+  onSettingsToggle(): void;
   selectedSha: string | undefined;
+  settingsOpen: boolean;
 }
 
 export function CommitNavigation({
@@ -18,7 +26,9 @@ export function CommitNavigation({
   disabled,
   naming,
   onChange,
+  onSettingsToggle,
   selectedSha,
+  settingsOpen,
 }: CommitNavigationProps) {
   const index = commits.findIndex((commit) => commit.sha === selectedSha);
   const selected = index >= 0 ? commits[index] : undefined;
@@ -36,7 +46,7 @@ export function CommitNavigation({
 
   return (
     <nav
-      className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_34px_34px_34px] items-center gap-[5px] px-[3px] max-[240px]:grid-cols-[auto_minmax(0,1fr)_30px_30px_30px] max-[240px]:gap-0.5"
+      className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_34px_34px_34px_34px] items-center gap-[5px] px-[3px] max-[240px]:grid-cols-[auto_minmax(0,1fr)_30px_30px_30px_30px] max-[240px]:gap-0.5"
       aria-label="Commit navigation"
     >
       <span className="shrink-0 whitespace-nowrap text-sm font-semibold text-[var(--vscode-descriptionForeground)] tabular-nums">
@@ -146,6 +156,20 @@ export function CommitNavigation({
         type="button"
       >
         <ArrowIcon direction="right" />
+      </button>
+      <button
+        aria-label={
+          settingsOpen
+            ? "Close comparison settings"
+            : "Open comparison settings"
+        }
+        aria-pressed={settingsOpen}
+        className="grid size-8 cursor-pointer place-items-center rounded-[5px] border-0 bg-transparent text-[var(--vscode-icon-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] hover:text-[var(--vscode-toolbar-activeForeground,var(--vscode-foreground))] focus-visible:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:outline-none aria-pressed:bg-[var(--vscode-toolbar-hoverBackground)] aria-pressed:text-[var(--vscode-toolbar-activeForeground,var(--vscode-foreground))] max-[240px]:w-7"
+        onClick={onSettingsToggle}
+        title="Comparison settings"
+        type="button"
+      >
+        <GearIcon />
       </button>
     </nav>
   );

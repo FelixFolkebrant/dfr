@@ -94,6 +94,7 @@ export interface GitBackend {
   getCurrentBranch(repository: Repository): Promise<BranchRef>;
   getBranches(repository: Repository): Promise<BranchRef[]>;
   getDefaultBase(branches: BranchRef[]): Promise<BranchRef>;
+  getRepositoryFiles(repoRoot: string, ref: string): Promise<string[]>;
   getReviewDetails(input: ComparisonInput): Promise<ReviewDetails>;
   getComparisonSummary(input: ComparisonInput): Promise<ComparisonSummary>;
   getFileDiff(input: FileDiffInput): Promise<FileDiffResult>;

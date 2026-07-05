@@ -201,6 +201,11 @@ export class SidebarReviewController {
         headRef,
         ...(review ? { mergeBase: review.mergeBase } : {}),
       });
+      const repositoryFiles = await this.loadRepositoryFiles(
+        context.repository.rootUri.fsPath,
+        summary.diffHeadRef ?? headRef,
+        summary.files.map((file) => file.path),
+      );
       if (request !== this.requestSequence) {
         return;
       }
@@ -223,6 +228,7 @@ export class SidebarReviewController {
           diffBaseRef: summary.diffBaseRef ?? summary.mergeBase,
           diffHeadRef: summary.diffHeadRef ?? summary.headRef,
           files: summary.files,
+          repositoryFiles,
           totals: summary.totals,
         },
       };
@@ -279,6 +285,11 @@ export class SidebarReviewController {
           ? { diffBaseRef: commit.parentSha, diffHeadRef: commit.sha }
           : {}),
       });
+      const repositoryFiles = await this.loadRepositoryFiles(
+        context.repository.rootUri.fsPath,
+        summary.diffHeadRef ?? headRef,
+        summary.files.map((file) => file.path),
+      );
       if (request !== this.requestSequence) {
         return;
       }
@@ -293,6 +304,7 @@ export class SidebarReviewController {
           diffBaseRef: summary.diffBaseRef ?? summary.mergeBase,
           diffHeadRef: summary.diffHeadRef ?? summary.headRef,
           files: summary.files,
+          repositoryFiles,
           totals: summary.totals,
         },
       };
@@ -318,5 +330,17 @@ export class SidebarReviewController {
       getReviewDetails?: GitBackend["getReviewDetails"];
     };
     return backend.getReviewDetails?.(input);
+  }
+
+  private async loadRepositoryFiles(
+    repoRoot: string,
+    ref: string,
+    changedPaths: string[],
+  ): Promise<string[]> {
+    const backend = this.gitBackend as GitBackend & {
+      getRepositoryFiles?: GitBackend["getRepositoryFiles"];
+    };
+    const paths = (await backend.getRepositoryFiles?.(repoRoot, ref)) ?? [];
+    return Array.from(new Set([...paths, ...changedPaths])).sort();
   }
 }
