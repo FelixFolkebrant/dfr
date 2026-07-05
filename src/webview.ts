@@ -5,7 +5,7 @@ import * as vscode from "vscode";
 export type WebviewSurface = "sidebar";
 
 const titles: Record<WebviewSurface, string> = {
-  sidebar: "Branch Diff",
+  sidebar: "DFR",
 };
 
 export function renderWebviewDocument(

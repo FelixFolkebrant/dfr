@@ -60,14 +60,14 @@ export class NativeDiffView implements vscode.TextDocumentContentProvider {
 
     if (state.status === "binary") {
       await vscode.window.showWarningMessage(
-        `Branch Diff Review cannot open the binary file ${state.path} as text.`,
+        `DFR cannot open the binary file ${state.path} as text.`,
       );
       return;
     }
 
     if (state.status === "error") {
       await vscode.window.showErrorMessage(
-        `Branch Diff Review could not open ${state.path}: ${state.message}`,
+        `DFR could not open ${state.path}: ${state.message}`,
       );
       return;
     }

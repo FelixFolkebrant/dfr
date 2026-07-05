@@ -18,8 +18,8 @@ test("starts review automatically and contributes refresh", async () => {
 
   assert.deepEqual(refreshCommand, {
     command: "branchDiffReview.refresh",
-    title: "Refresh Branch Diff Review",
-    category: "Branch Diff Review",
+    title: "DFR: Refresh",
+    category: "DFR",
     icon: "$(refresh)",
   });
   assert.deepEqual(titleMenu, {

@@ -61,8 +61,6 @@ async function discoverAndRun(
     await run(repositoryContext);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    await vscode.window.showErrorMessage(
-      `Branch Diff Review could not ${action}: ${message}`,
-    );
+    await vscode.window.showErrorMessage(`DFR could not ${action}: ${message}`);
   }
 }
