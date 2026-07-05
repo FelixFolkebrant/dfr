@@ -83,7 +83,7 @@
     }
   },
   "scripts": {
-    "build": "pnpm build:extension && pnpm build:webview",
+    "build": "pnpm clean && pnpm build:extension && pnpm build:webview",
     "build:extension": "tsc -p tsconfig.json",
     "build:webview": "node scripts/build-webviews.mjs",
     "check": "pnpm typecheck && pnpm lint && pnpm test && pnpm build",
@@ -96,18 +96,17 @@
     "typecheck:webview": "tsc -p tsconfig.webview.json --noEmit",
     "vscode:prepublish": "pnpm build"
   },
-  "dependencies": {
-    "react": "^19.2.7",
-    "react-dom": "^19.2.7"
-  },
   "devDependencies": {
     "@biomejs/biome": "^2.5.1",
     "@tailwindcss/cli": "^4.3.1",
     "@types/node": "^24.0.12",
     "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "@types/vscode": "^1.85.0",
+    "@types/vscode": "1.85.0",
+    "@vscode/vsce": "3.9.2",
     "esbuild": "^0.25.6",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7",
     "tailwindcss": "^4.3.1",
     "typescript": "^5.8.3"
   }
