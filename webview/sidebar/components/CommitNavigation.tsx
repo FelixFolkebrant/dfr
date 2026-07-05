@@ -1,42 +1,54 @@
 import { useId, useRef, useState } from "react";
-import type { ReviewCommit } from "../../../src/git/GitBackend";
-import {
-  ArrowIcon,
-  CheckIcon,
-  CopyIcon,
-  DropdownIcon,
-  GearIcon,
-} from "./Icons";
+import type { MergedBranch, ReviewCommit } from "../../../src/git/GitBackend";
+import { HistoryNavigation } from "./HistoryNavigation";
+import { ArrowIcon, CopyIcon, GearIcon, HistoryIcon } from "./Icons";
 import { SelectDropdown, useDismissOnOutsidePointer } from "./SelectDropdown";
 
-export type CommitNaming = "hash" | "hash-title" | "title";
-
 interface CommitNavigationProps {
+  allChangesTitle: string;
   commits: ReviewCommit[];
   disabled: boolean;
-  naming: CommitNaming;
+  historyBranches: MergedBranch[];
+  historyDisabled: boolean;
+  historyOpen: boolean;
   onChange(sha: string | undefined): void;
+  onHistoryChange(mergeSha: string | undefined): void;
+  onHistoryToggle(): void;
   onSettingsToggle(): void;
+  selectedHistorySha: string | undefined;
   selectedSha: string | undefined;
   settingsOpen: boolean;
+  totals?: { files: number; additions: number; deletions: number };
 }
 
 export function CommitNavigation({
+  allChangesTitle,
   commits,
   disabled,
-  naming,
+  historyBranches,
+  historyDisabled,
+  historyOpen,
   onChange,
+  onHistoryChange,
+  onHistoryToggle,
   onSettingsToggle,
+  selectedHistorySha,
   selectedSha,
   settingsOpen,
+  totals,
 }: CommitNavigationProps) {
   const index = commits.findIndex((commit) => commit.sha === selectedSha);
   const selected = index >= 0 ? commits[index] : undefined;
+  const newestFirst = commits
+    .map((commit, commitIndex) => ({
+      commit,
+      index: commitIndex,
+    }))
+    .reverse();
   const id = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const [open, setOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
   useDismissOnOutsidePointer(rootRef, open, setOpen);
 
   const close = (restoreFocus: boolean) => {
@@ -44,177 +56,215 @@ export function CommitNavigation({
     if (restoreFocus) requestAnimationFrame(() => triggerRef.current?.focus());
   };
 
+  const selectedStats = selected
+    ? {
+        files: selected.filesChanged,
+        additions: selected.additions,
+        deletions: selected.deletions,
+      }
+    : totals;
+
   return (
     <nav
-      className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_34px_34px_34px_34px] items-center gap-[5px] px-[3px] max-[240px]:grid-cols-[auto_minmax(0,1fr)_30px_30px_30px_30px] max-[240px]:gap-0.5"
-      aria-label="Commit navigation"
+      className="flex min-w-0 flex-col px-[3px]"
+      aria-label="Review navigation"
     >
-      <span className="shrink-0 whitespace-nowrap text-sm font-semibold text-[var(--vscode-descriptionForeground)] tabular-nums">
-        {selected ? `${index + 1}/${commits.length}` : ""}
-      </span>
-      <div className="relative min-w-0" ref={rootRef}>
+      {historyOpen && (
+        <HistoryNavigation
+          branches={historyBranches}
+          disabled={historyDisabled}
+          onChange={onHistoryChange}
+          selectedSha={selectedHistorySha}
+        />
+      )}
+      <section
+        aria-label="Commit scope"
+        className="commit-submenu -mx-3 px-[15px] py-1.5"
+      >
+        <div className="relative min-w-0" ref={rootRef}>
+          <div className="commit-scope relative min-h-12 min-w-0">
+            <button
+              aria-controls={`${id}-listbox`}
+              aria-expanded={open}
+              aria-haspopup="listbox"
+              aria-label="Select commit scope"
+              className="peer absolute inset-0 w-full cursor-pointer rounded-[4px] border-0 bg-transparent focus-visible:bg-[var(--vscode-list-hoverBackground)] focus-visible:outline-none disabled:cursor-progress disabled:opacity-65"
+              disabled={disabled}
+              onClick={() => setOpen((current) => !current)}
+              ref={triggerRef}
+              type="button"
+            />
+            <div className="pointer-events-none relative flex min-h-12 min-w-0 items-center gap-2 px-1.5 py-1 text-[var(--vscode-sideBar-foreground)] peer-hover:bg-[var(--vscode-list-hoverBackground)] peer-disabled:opacity-65">
+              <CommitEntry
+                commit={selected}
+                emptyTitle={allChangesTitle}
+                index={selected ? index : undefined}
+                stats={selectedStats}
+                total={commits.length}
+              />
+            </div>
+          </div>
+          {open && (
+            <SelectDropdown
+              id={id}
+              label="Commit scopes"
+              onClose={close}
+              onSelect={(sha) => {
+                onChange(sha || undefined);
+                close(true);
+              }}
+              options={[
+                {
+                  content: (
+                    <CommitEntry
+                      showTitle={false}
+                      stats={totals}
+                      total={commits.length}
+                    />
+                  ),
+                  label: "All changes",
+                  value: "",
+                },
+                ...newestFirst.map(({ commit, index: commitIndex }) => ({
+                  content: (
+                    <CommitEntry
+                      commit={commit}
+                      index={commitIndex}
+                      stats={{
+                        files: commit.filesChanged,
+                        additions: commit.additions,
+                        deletions: commit.deletions,
+                      }}
+                      total={commits.length}
+                    />
+                  ),
+                  label: `${commitIndex + 1}. ${commit.subject} ${commit.shortSha}`,
+                  value: commit.sha,
+                })),
+              ]}
+              pinnedValue=""
+              selectedValue={selectedSha ?? ""}
+              showSearch={commits.length > 8}
+            />
+          )}
+        </div>
+      </section>
+      <div className="mt-1 flex min-w-0 items-center justify-end gap-0.5">
         <button
-          aria-controls={`${id}-listbox`}
-          aria-expanded={open}
-          aria-haspopup="listbox"
-          aria-label="Diff scope"
-          className="flex h-[34px] w-full min-w-0 cursor-pointer items-center gap-2 overflow-hidden border-0 bg-transparent px-[5px] text-left text-[var(--vscode-sideBar-foreground)] focus-visible:bg-[var(--vscode-list-hoverBackground)] focus-visible:outline-none disabled:cursor-progress disabled:opacity-65"
-          disabled={disabled}
-          onClick={() => setOpen((current) => !current)}
-          ref={triggerRef}
+          aria-label="Previous commit"
+          className="grid size-8 cursor-pointer place-items-center rounded-[5px] border-0 bg-transparent text-[var(--vscode-icon-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:outline-none disabled:cursor-default disabled:opacity-35"
+          disabled={disabled || commits.length === 0}
+          onClick={() =>
+            onChange(
+              selected && index > 0
+                ? commits[index - 1]?.sha
+                : selected
+                  ? undefined
+                  : commits.at(-1)?.sha,
+            )
+          }
           type="button"
         >
-          <span className="min-w-0 flex-1 overflow-hidden">
-            {selected ? (
-              <CommitName commit={selected} naming={naming} />
-            ) : (
-              "All"
-            )}
-          </span>
-          <span className="shrink-0 text-[var(--vscode-icon-foreground)]">
-            <DropdownIcon />
-          </span>
+          <ArrowIcon direction="left" />
         </button>
-        {open && (
-          <SelectDropdown
-            id={id}
-            label="Commit scopes"
-            onClose={close}
-            onSelect={(sha) => {
-              onChange(sha || undefined);
-              close(true);
-            }}
-            options={[
-              { label: "All", value: "" },
-              ...commits.map((commit, commitIndex) => ({
-                label: formatCommitName(commit, naming),
-                content: (
-                  <CommitName
-                    commit={commit}
-                    index={commitIndex}
-                    naming={naming}
-                  />
-                ),
-                value: commit.sha,
-              })),
-            ]}
-            pinnedValue=""
-            selectedValue={selectedSha ?? ""}
-            showSearch={false}
-          />
-        )}
+        <button
+          aria-label="Next commit"
+          className="grid size-8 cursor-pointer place-items-center rounded-[5px] border-0 bg-transparent text-[var(--vscode-icon-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:outline-none disabled:cursor-default disabled:opacity-35"
+          disabled={disabled || commits.length === 0}
+          onClick={() =>
+            onChange(
+              selected && index < commits.length - 1
+                ? commits[index + 1]?.sha
+                : selected
+                  ? undefined
+                  : commits[0]?.sha,
+            )
+          }
+          type="button"
+        >
+          <ArrowIcon direction="right" />
+        </button>
+        <button
+          aria-label={historyOpen ? "Close history" : "Open history"}
+          aria-pressed={historyOpen}
+          className="grid size-8 cursor-pointer place-items-center rounded-[5px] border-0 bg-transparent text-[var(--vscode-icon-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:outline-none aria-pressed:bg-[var(--vscode-toolbar-hoverBackground)]"
+          onClick={onHistoryToggle}
+          title="History"
+          type="button"
+        >
+          <HistoryIcon />
+        </button>
+        <button
+          aria-label="Copy hash"
+          className="grid size-8 cursor-pointer place-items-center rounded-[5px] border-0 bg-transparent text-[var(--vscode-icon-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:outline-none disabled:cursor-default disabled:opacity-35"
+          disabled={!selected}
+          onClick={() => {
+            if (selected) void navigator.clipboard.writeText(selected.sha);
+          }}
+          title="Copy hash"
+          type="button"
+        >
+          <CopyIcon />
+        </button>
+        <button
+          aria-label={
+            settingsOpen
+              ? "Close comparison settings"
+              : "Open comparison settings"
+          }
+          aria-pressed={settingsOpen}
+          className="grid size-8 cursor-pointer place-items-center rounded-[5px] border-0 bg-transparent text-[var(--vscode-icon-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:outline-none aria-pressed:bg-[var(--vscode-toolbar-hoverBackground)]"
+          onClick={onSettingsToggle}
+          title="Comparison settings"
+          type="button"
+        >
+          <GearIcon />
+        </button>
       </div>
-      <button
-        aria-label={copied ? "Commit hash copied" : "Copy commit hash"}
-        className={`grid size-8 cursor-pointer place-items-center rounded-[5px] border-0 focus-visible:outline-none disabled:cursor-default disabled:opacity-35 max-[240px]:w-7 ${
-          copied
-            ? "bg-[var(--vscode-list-activeSelectionBackground)] text-[var(--vscode-testing-iconPassed,var(--vscode-list-activeSelectionForeground))]"
-            : "bg-transparent text-[var(--vscode-icon-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:bg-[var(--vscode-toolbar-hoverBackground)]"
-        }`}
-        disabled={disabled || !selected}
-        onClick={async () => {
-          if (!selected) return;
-          await navigator.clipboard.writeText(selected.sha);
-          setCopied(true);
-          window.setTimeout(() => setCopied(false), 1500);
-        }}
-        title={copied ? "Copied" : "Copy commit hash"}
-        type="button"
-      >
-        {copied ? <CheckIcon /> : <CopyIcon />}
-      </button>
-      <button
-        aria-label="Previous commit"
-        className="grid size-8 cursor-pointer place-items-center rounded-[5px] border-0 bg-transparent text-[var(--vscode-icon-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] hover:text-[var(--vscode-toolbar-activeForeground,var(--vscode-foreground))] focus-visible:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:outline-none disabled:cursor-default disabled:opacity-35 max-[240px]:w-7"
-        disabled={disabled || commits.length === 0}
-        onClick={() =>
-          onChange(
-            selected && index > 0
-              ? commits[index - 1]?.sha
-              : selected
-                ? undefined
-                : commits.at(-1)?.sha,
-          )
-        }
-        type="button"
-      >
-        <ArrowIcon direction="left" />
-      </button>
-      <button
-        aria-label="Next commit"
-        className="grid size-8 cursor-pointer place-items-center rounded-[5px] border-0 bg-transparent text-[var(--vscode-icon-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] hover:text-[var(--vscode-toolbar-activeForeground,var(--vscode-foreground))] focus-visible:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:outline-none disabled:cursor-default disabled:opacity-35 max-[240px]:w-7"
-        disabled={disabled || commits.length === 0}
-        onClick={() =>
-          onChange(
-            selected && index < commits.length - 1
-              ? commits[index + 1]?.sha
-              : selected
-                ? undefined
-                : commits[0]?.sha,
-          )
-        }
-        type="button"
-      >
-        <ArrowIcon direction="right" />
-      </button>
-      <button
-        aria-label={
-          settingsOpen
-            ? "Close comparison settings"
-            : "Open comparison settings"
-        }
-        aria-pressed={settingsOpen}
-        className="grid size-8 cursor-pointer place-items-center rounded-[5px] border-0 bg-transparent text-[var(--vscode-icon-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] hover:text-[var(--vscode-toolbar-activeForeground,var(--vscode-foreground))] focus-visible:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:outline-none aria-pressed:bg-[var(--vscode-toolbar-hoverBackground)] aria-pressed:text-[var(--vscode-toolbar-activeForeground,var(--vscode-foreground))] max-[240px]:w-7"
-        onClick={onSettingsToggle}
-        title="Comparison settings"
-        type="button"
-      >
-        <GearIcon />
-      </button>
     </nav>
   );
 }
 
-function formatCommitName(commit: ReviewCommit, naming: CommitNaming) {
-  if (naming === "title") return commit.subject;
-  if (naming === "hash-title") return `${commit.shortSha} ${commit.subject}`;
-  return commit.shortSha;
-}
-
-function CommitName({
+function CommitEntry({
   commit,
+  emptyTitle = "All changes",
   index,
-  naming,
+  showOrdinal = true,
+  showTitle = true,
+  stats,
+  total,
 }: {
-  commit: ReviewCommit;
+  commit?: ReviewCommit;
+  emptyTitle?: string;
   index?: number;
-  naming: CommitNaming;
+  showOrdinal?: boolean;
+  showTitle?: boolean;
+  stats?: { files: number; additions: number; deletions: number };
+  total: number;
 }) {
-  const ordinal = index === undefined ? null : `${index + 1}.`;
-
   return (
-    <span className="flex min-w-0 items-baseline gap-1.5">
-      {ordinal && <span className="shrink-0 tabular-nums">{ordinal}</span>}
-      {naming !== "title" && (
-        <span
-          className={
-            naming === "hash-title"
-              ? "truncate text-[var(--vscode-descriptionForeground)]"
-              : ordinal
-                ? "text-[var(--vscode-descriptionForeground)]"
-                : ""
-          }
-        >
-          {commit.shortSha}
+    <span className="grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_auto] items-center">
+      {showTitle && (
+        <span className="col-span-2 min-w-0 truncate font-medium">
+          {commit?.subject ?? emptyTitle}
         </span>
       )}
-      {naming !== "hash" && (
-        <span
-          className={
-            ordinal ? "min-w-0 break-words whitespace-normal" : "truncate"
-          }
-        >
-          {commit.subject}
+      {showOrdinal && (
+        <span className="min-w-0 text-[10px] font-normal text-[var(--vscode-descriptionForeground)] opacity-55 tabular-nums">
+          {index === undefined ? "All" : `${index + 1}/${total}`}
+        </span>
+      )}
+      {stats && (
+        <span className="col-start-2 flex shrink-0 items-center justify-self-end gap-x-2 whitespace-nowrap text-[11px] text-[var(--vscode-descriptionForeground)] tabular-nums">
+          <span>
+            {stats.files} {stats.files === 1 ? "file" : "files"}
+          </span>
+          <span className="text-[var(--vscode-gitDecoration-addedResourceForeground,#2ea043)]">
+            +{stats.additions}
+          </span>
+          <span className="text-[var(--vscode-gitDecoration-deletedResourceForeground,#f85149)]">
+            −{stats.deletions}
+          </span>
         </span>
       )}
     </span>

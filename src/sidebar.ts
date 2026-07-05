@@ -80,6 +80,11 @@ export class BranchDiffSidebarProvider implements vscode.WebviewViewProvider {
       return;
     }
 
+    if (message.type === "selectHistory") {
+      await this.controller.selectHistory(message.mergeSha);
+      return;
+    }
+
     if (message.type === "openDocument") {
       if (this.repository && this.controller.hasDocument(message.path)) {
         const uri = vscode.Uri.joinPath(

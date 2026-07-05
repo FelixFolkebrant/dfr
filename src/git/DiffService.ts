@@ -30,7 +30,8 @@ export class DiffService {
           "log",
           "--reverse",
           "--topo-order",
-          "--format=%x1e%H%x1f%h%x1f%P%x1f%s%x1f%B",
+          "--format=%x1e%H%x1f%h%x1f%P%x1f%s%x1f%B%x1f",
+          "--numstat",
           `${mergeBase}..${input.headRef}`,
         ]),
         this.gitRunner.run(input.repoRoot, ["ls-files", "-z"]),
@@ -176,21 +177,40 @@ export function parseCommitLog(output: string): ReviewCommit[] {
     .split("\x1e")
     .filter((record) => record.trim())
     .map((record) => {
-      const [sha, shortSha, parents, subject, ...messageParts] = record
-        .replace(/^\n/, "")
-        .split("\x1f");
+      const [sha, shortSha, parents, subject, message = "", numstat = ""] =
+        record.replace(/^\n/, "").split("\x1f");
       const parentSha = parents?.split(" ")[0];
       if (!sha || !shortSha || !parentSha || subject === undefined) {
         throw new Error("Malformed Git commit log output");
       }
+      const stats = parseCommitNumstat(numstat);
       return {
         sha,
         shortSha,
         parentSha,
         subject,
-        message: messageParts.join("\x1f").trim(),
+        message: message.trim(),
+        ...stats,
       };
     });
+}
+
+function parseCommitNumstat(output: string): {
+  filesChanged: number;
+  additions: number;
+  deletions: number;
+} {
+  return output.split("\n").reduce(
+    (totals, line) => {
+      const [additions, deletions, path] = line.trim().split("\t");
+      if (!path) return totals;
+      totals.filesChanged += 1;
+      if (additions !== "-") totals.additions += Number(additions);
+      if (deletions !== "-") totals.deletions += Number(deletions);
+      return totals;
+    },
+    { filesChanged: 0, additions: 0, deletions: 0 },
+  );
 }
 
 interface IssueKey {

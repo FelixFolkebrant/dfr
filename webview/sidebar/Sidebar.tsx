@@ -7,10 +7,7 @@ import type {
 } from "../../src/webviews/protocol";
 import { BranchSelect } from "./components/BranchSelect";
 import { ChangedFilesSection } from "./components/ChangedFilesSection";
-import {
-  type CommitNaming,
-  CommitNavigation,
-} from "./components/CommitNavigation";
+import { CommitNavigation } from "./components/CommitNavigation";
 import { ComparisonStatus } from "./components/ComparisonStatus";
 import { DetailsSections } from "./components/DetailsSections";
 
@@ -25,7 +22,9 @@ const vscode = acquireVsCodeApi();
 export function Sidebar() {
   const [state, setState] = useState<SidebarState>({ status: "idle" });
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [commitNaming, setCommitNaming] = useState<CommitNaming>("hash");
+  const [openSettingsAfterHistory, setOpenSettingsAfterHistory] =
+    useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const [directoryDisplay, setDirectoryDisplay] =
     useState<DirectoryDisplay>("flattened");
 
@@ -40,6 +39,17 @@ export function Sidebar() {
     return () => window.removeEventListener("message", receiveMessage);
   }, []);
 
+  useEffect(() => {
+    if (
+      openSettingsAfterHistory &&
+      state.status !== "idle" &&
+      !state.selectedHistorySha
+    ) {
+      setOpenSettingsAfterHistory(false);
+      setSettingsOpen(true);
+    }
+  }, [openSettingsAfterHistory, state]);
+
   if (state.status === "idle") {
     return <SidebarEmptyState />;
   }
@@ -47,17 +57,51 @@ export function Sidebar() {
   return (
     <main className="flex h-full min-w-0 flex-col gap-3.5 overflow-hidden bg-[var(--vscode-sideBar-background)] px-3 pt-3.5 pb-3 text-[length:var(--vscode-font-size)] text-[var(--vscode-sideBar-foreground)] [color-scheme:light_dark] [font-family:var(--vscode-font-family)]">
       <CommitNavigation
+        allChangesTitle={
+          state.mergedBranches.find(
+            (branch) => branch.mergeSha === state.selectedHistorySha,
+          )?.name ?? state.headRef
+        }
         commits={state.review?.commits ?? []}
         disabled={!state.review}
-        naming={commitNaming}
+        historyBranches={state.mergedBranches}
+        historyDisabled={state.status === "loading"}
+        historyOpen={historyOpen}
         onChange={(sha) =>
           vscode.postMessage(
             sha ? { type: "selectCommit", sha } : { type: "selectCommit" },
           )
         }
-        onSettingsToggle={() => setSettingsOpen((open) => !open)}
+        onHistoryChange={(mergeSha) => {
+          if (!mergeSha) setHistoryOpen(false);
+          vscode.postMessage(
+            mergeSha
+              ? { type: "selectHistory", mergeSha }
+              : { type: "selectHistory" },
+          );
+        }}
+        onHistoryToggle={() => {
+          setHistoryOpen(!historyOpen);
+          if (historyOpen && state.selectedHistorySha) {
+            vscode.postMessage({ type: "selectHistory" });
+          }
+          setSettingsOpen(false);
+          setOpenSettingsAfterHistory(false);
+        }}
+        onSettingsToggle={() => {
+          setHistoryOpen(false);
+          if (state.selectedHistorySha) {
+            setSettingsOpen(false);
+            setOpenSettingsAfterHistory(true);
+            vscode.postMessage({ type: "selectHistory" });
+          } else {
+            setSettingsOpen((open) => !open);
+          }
+        }}
+        selectedHistorySha={state.selectedHistorySha}
         selectedSha={state.selectedCommitSha}
         settingsOpen={settingsOpen}
+        totals={state.status === "ready" ? state.comparison.totals : undefined}
       />
       {settingsOpen ? (
         <section
@@ -94,32 +138,6 @@ export function Sidebar() {
             }
             value={state.baseRef}
           />
-          <fieldset className="m-0 flex min-w-0 flex-col gap-2 border-0 p-0">
-            <legend className="mb-1 ml-2 text-xs text-[var(--vscode-descriptionForeground)]">
-              Commit naming
-            </legend>
-            {(
-              [
-                ["hash", "Hash"],
-                ["hash-title", "Hash + Commit title"],
-                ["title", "Commit title"],
-              ] as const
-            ).map(([value, label]) => (
-              <label
-                className="flex cursor-pointer items-center gap-2 px-2"
-                key={value}
-              >
-                <input
-                  checked={commitNaming === value}
-                  className="accent-[var(--vscode-focusBorder)] focus:outline-none"
-                  name="commit-naming"
-                  onChange={() => setCommitNaming(value)}
-                  type="radio"
-                />
-                <span>{label}</span>
-              </label>
-            ))}
-          </fieldset>
         </section>
       ) : (
         <Review

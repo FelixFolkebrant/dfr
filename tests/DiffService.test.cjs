@@ -234,8 +234,8 @@ test("reports selected-file content failures with comparison context", async () 
 
 test("parses oldest-first commit metadata", () => {
   const output = [
-    "\x1eaaaaaaaa\x1faaaaaaa\x1fparent-a\x1fIS-010: first\x1fIS-010: first\n\nBody\n",
-    "\x1ebbbbbbbb\x1fbbbbbbb\x1fparent-b parent-2\x1fIS-010: second\x1fIS-010: second\n",
+    "\x1eaaaaaaaa\x1faaaaaaa\x1fparent-a\x1fIS-010: first\x1fIS-010: first\n\nBody\x1f\n\n12\t3\tsrc/one.ts\n-\t-\timage.png\n",
+    "\x1ebbbbbbbb\x1fbbbbbbb\x1fparent-b parent-2\x1fIS-010: second\x1fIS-010: second\x1f\n\n4\t0\tsrc/two.ts\n",
   ].join("\n");
 
   assert.deepEqual(parseCommitLog(output), [
@@ -245,6 +245,9 @@ test("parses oldest-first commit metadata", () => {
       parentSha: "parent-a",
       subject: "IS-010: first",
       message: "IS-010: first\n\nBody",
+      filesChanged: 2,
+      additions: 12,
+      deletions: 3,
     },
     {
       sha: "bbbbbbbb",
@@ -252,6 +255,9 @@ test("parses oldest-first commit metadata", () => {
       parentSha: "parent-b",
       subject: "IS-010: second",
       message: "IS-010: second",
+      filesChanged: 1,
+      additions: 4,
+      deletions: 0,
     },
   ]);
 });
@@ -291,7 +297,7 @@ test("loads review commits and matching tracked Markdown documents", async () =>
       if (args[0] === "log") {
         return {
           stdout:
-            "\x1ecommit1\x1fcomm1\x1fbase123\x1fGH-001: change\x1fGH-001: change\n",
+            "\x1ecommit1\x1fcomm1\x1fbase123\x1fGH-001: change\x1fGH-001: change\x1f\n\n2\t1\tsrc/file.ts\n",
           stderr: "",
         };
       }
@@ -310,8 +316,17 @@ test("loads review commits and matching tracked Markdown documents", async () =>
 
   assert.equal(details.mergeBase, "base123");
   assert.equal(details.commits[0].sha, "commit1");
+  assert.deepEqual(
+    {
+      filesChanged: details.commits[0].filesChanged,
+      additions: details.commits[0].additions,
+      deletions: details.commits[0].deletions,
+    },
+    { filesChanged: 1, additions: 2, deletions: 1 },
+  );
   assert.deepEqual(details.documents, ["docs/GH-1-PLAN.md"]);
   assert.deepEqual(calls[1].slice(0, 3), ["log", "--reverse", "--topo-order"]);
+  assert.equal(calls[1].includes("--numstat"), true);
   assert.deepEqual(calls[2], ["ls-files", "-z"]);
 });
 

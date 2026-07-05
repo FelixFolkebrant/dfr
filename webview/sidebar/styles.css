@@ -1,5 +1,31 @@
 @import "tailwindcss";
+
+.commit-scope {
+  container-type: inline-size;
+}
+
+.history-tree {
+  container-type: inline-size;
+}
+
+@container (max-width: 190px) {
+  .history-branch-name {
+    display: none;
+  }
+}
+
 @source "./**/*.tsx";
+
+.history-submenu {
+  background: color-mix(in srgb, var(--vscode-sideBar-background) 89%, black);
+  box-shadow: inset 0 -1px var(--vscode-sideBarSectionHeader-border, #0003);
+}
+
+.commit-submenu {
+  position: relative;
+  background: color-mix(in srgb, var(--vscode-sideBar-background) 95%, black);
+  box-shadow: inset 0 -1px var(--vscode-sideBarSectionHeader-border, #0002);
+}
 
 html,
 body,

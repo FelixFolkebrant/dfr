@@ -2,6 +2,17 @@
 
 All notable changes to DFR are documented in this file.
 
+## Unreleased
+
+### Added
+
+- First-parent merge history with merged-branch and commit navigation.
+
+### Changed
+
+- Commit selection now uses a layered, Git-log-style menu with per-commit change totals.
+- Merged-branch history now uses a newest-first graph with branch statistics and tree navigation.
+
 ## 0.0.1 - 2026-07-05
 
 ### Added
