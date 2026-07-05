@@ -50,14 +50,14 @@ export function DetailsSections({
           )}
         </section>
       )}
-      <section className="min-w-0">
-        <DisclosureButton
-          expanded={docsOpen}
-          label="Docs"
-          onClick={() => setDocsOpen((open) => !open)}
-        />
-        {docsOpen &&
-          (documents.length > 0 ? (
+      {documents.length > 0 && (
+        <section className="min-w-0">
+          <DisclosureButton
+            expanded={docsOpen}
+            label="Docs"
+            onClick={() => setDocsOpen((open) => !open)}
+          />
+          {docsOpen && (
             <ul className="mt-[3px] grid list-none gap-px px-[9px]">
               {documents.map((path) => (
                 <li key={path}>
@@ -72,12 +72,9 @@ export function DetailsSections({
                 </li>
               ))}
             </ul>
-          ) : (
-            <p className="mt-[3px] px-[9px] text-[11px] leading-[1.45] text-[var(--vscode-descriptionForeground)]">
-              No related Markdown files found.
-            </p>
-          ))}
-      </section>
+          )}
+        </section>
+      )}
     </div>
   );
 }

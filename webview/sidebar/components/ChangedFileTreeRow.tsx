@@ -40,6 +40,10 @@ export function ChangedFileTreeRow({
 }: ChangedFileTreeRowProps) {
   const { node } = item;
   const isFolder = node.kind === "folder";
+  const flattenedFileRow = directoryDisplay === "flattened" && !isFolder;
+  const showFlattenedStatusIcon =
+    flattenedFileRow &&
+    (node.file?.status === "added" || node.file?.status === "deleted");
   const folderSummary = isFolder ? getFolderChangeSummary(node) : undefined;
   const showFolderSummary =
     !expanded && folderSummary !== undefined && folderSummary.files > 0;
@@ -79,18 +83,19 @@ export function ChangedFileTreeRow({
           <FolderChevronIcon expanded={expanded} />
         </span>
       )}
-      {(!isFolder || directoryDisplay !== "flattened") && (
-        <span
-          className="grid size-[18px] shrink-0 place-items-center"
-          aria-hidden="true"
-        >
-          {isFolder ? (
-            <FolderIcon emphasized={showFolderSummary} expanded={expanded} />
-          ) : (
-            <FileStatusIcon status={node.file?.status ?? "unknown"} />
-          )}
-        </span>
-      )}
+      {(!isFolder || directoryDisplay !== "flattened") &&
+        (!flattenedFileRow || showFlattenedStatusIcon) && (
+          <span
+            className="grid size-[18px] shrink-0 place-items-center"
+            aria-hidden="true"
+          >
+            {isFolder ? (
+              <FolderIcon emphasized={showFolderSummary} expanded={expanded} />
+            ) : (
+              <FileStatusIcon status={node.file?.status ?? "unknown"} />
+            )}
+          </span>
+        )}
       {directoryDisplay === "flattened" ? (
         <span
           className={`min-w-0 flex-1 overflow-hidden text-ellipsis whitespace-nowrap ${isFolder ? "text-[10px] text-[var(--vscode-descriptionForeground)]" : ""}`}

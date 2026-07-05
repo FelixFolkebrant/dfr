@@ -32,7 +32,7 @@ function Summary({
   totals: { files: number; additions: number; deletions: number };
 }) {
   return (
-    <dl className="flex items-baseline gap-[7px] px-[3px] text-xs [&>div]:contents [&_dd]:m-0 [&_dd]:font-semibold [&_dd]:tabular-nums">
+    <dl className="flex items-baseline justify-end gap-[7px] px-[3px] text-xs [&>div]:contents [&_dd]:m-0 [&_dd]:font-semibold [&_dd]:tabular-nums">
       <div>
         <dt className="sr-only">Files changed</dt>
         <dd className="font-normal! text-[var(--vscode-sideBar-foreground)]">
