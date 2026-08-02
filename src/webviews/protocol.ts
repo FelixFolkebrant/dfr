@@ -2,6 +2,7 @@ import type {
   BranchRef,
   ComparisonSummary,
   DiffFileSummary,
+  MergedBranch,
   ReviewDetails,
 } from "../git/GitBackend";
 
@@ -23,6 +24,8 @@ interface SidebarSelection {
   headRef: string;
   review: ReviewDetails | undefined;
   selectedCommitSha: string | undefined;
+  mergedBranches: MergedBranch[];
+  selectedHistorySha: string | undefined;
 }
 
 export type SidebarState =
@@ -44,6 +47,7 @@ export type SidebarToExtensionMessage =
   | { type: "ready" }
   | { type: "selectBranches"; baseRef: string; headRef: string }
   | { type: "selectCommit"; sha?: string }
+  | { type: "selectHistory"; mergeSha?: string }
   | { type: "openDocument"; path: string }
   | { type: "selectFile"; comparisonId: string; path: string };
 
@@ -67,6 +71,9 @@ export function isSidebarMessage(
   }
   if (message.type === "selectCommit") {
     return !("sha" in message) || typeof message.sha === "string";
+  }
+  if (message.type === "selectHistory") {
+    return !("mergeSha" in message) || typeof message.mergeSha === "string";
   }
   if (message.type === "openDocument") {
     return "path" in message && typeof message.path === "string";

@@ -10,6 +10,7 @@ DFR is a focused local review surface for the changes a branch introduces. It br
 
 - Compare any local or remote branch with another branch using merge-base semantics.
 - Review the whole branch or step through individual commits.
+- Browse branches merged into the comparison base and step through each merge or its commits.
 - See changed files, status, additions, and deletions in tree, flattened, or contextual views.
 - Open selected files in VS Code's native diff editor.
 - Open Markdown issue and documentation files associated with the review.
@@ -46,10 +47,11 @@ code --install-extension dfr.vsix
 1. Open a Git repository in VS Code and check out the branch you want to review.
 2. Select **DFR** in the Activity Bar. DFR compares the current branch with the configured base branch, or the first available branch from `main`, `master`, `origin/main`, and `origin/master`.
 3. Use the scope dropdown to review **All** changes or select an individual commit. The arrow buttons step through commits.
-4. Select the settings button to change the review branch, comparison branch, or commit naming.
-5. Choose tree, flattened, or contextual file display.
-6. Select a changed file to open its diff in VS Code's native diff editor.
-7. Use **DFR: Refresh** from the Command Palette or the sidebar title to reload repository state.
+4. Select the History button to choose a branch merged into the comparison base. Use the history arrows to move between merges, or use the commit controls to inspect that merged branch commit by commit.
+5. Select the settings button to change the review branch, comparison branch, or commit naming.
+6. Choose tree, flattened, or contextual file display.
+7. Select a changed file to open its diff in VS Code's native diff editor.
+8. Use **DFR: Refresh** from the Command Palette or the sidebar title to reload repository state.
 
 ## File views
 
@@ -69,6 +71,7 @@ The tree view groups changed files by directory. The flattened view collapses di
 - DFR is a desktop/workspace extension and does not run in browser-only VS Code environments.
 - Binary files are identified but cannot be rendered in the text diff editor.
 - DFR reviews committed branch history. It does not create pull requests, post comments, stage changes, or resolve conflicts.
+- History lists first-parent merge commits. Squash-merged and rebased branches do not retain a branch boundary for DFR to list.
 - In multi-repository workspaces, DFR uses the repository containing the active editor or asks you to select one when starting or refreshing.
 
 ## License

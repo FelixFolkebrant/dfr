@@ -8,10 +8,12 @@ import type {
   FileDiffInput,
   FileDiffResult,
   GitBackend,
+  MergedBranch,
   Repository,
   ReviewDetails,
 } from "./GitBackend";
 import { GitRunner } from "./GitRunner";
+import { parseMergedBranches } from "./history";
 
 interface GitRef {
   name?: string;
@@ -171,6 +173,36 @@ export class NativeGitBackend implements GitBackend {
       ref,
     ]);
     return stdout.split("\0").filter(Boolean);
+  }
+
+  public async getMergedBranches(
+    repoRoot: string,
+    baseRef: string,
+  ): Promise<MergedBranch[]> {
+    const { stdout } = await this.gitRunner.run(repoRoot, [
+      "log",
+      "--first-parent",
+      "--merges",
+      "--reverse",
+      "--format=%x1e%H%x1f%h%x1f%P%x1f%s%x1f",
+      "--numstat",
+      baseRef,
+    ]);
+    return Promise.all(
+      parseMergedBranches(stdout).map(async (branch) => {
+        const commitLog = await this.gitRunner.run(repoRoot, [
+          "log",
+          "--format=%s",
+          `${branch.baseSha}..${branch.headSha}`,
+        ]);
+        const subjects = commitLog.stdout.split("\n").filter(Boolean);
+        return {
+          ...branch,
+          title: subjects[0] ?? branch.subject,
+          commitCount: subjects.length,
+        };
+      }),
+    );
   }
 
   public async getReviewDetails(

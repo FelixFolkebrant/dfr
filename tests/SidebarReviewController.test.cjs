@@ -137,6 +137,7 @@ test("prevents a stale comparison from replacing a newer selection", async () =>
   const controller = new SidebarReviewController(backend, () => {});
 
   const initial = controller.start(context);
+  await new Promise((resolve) => setImmediate(resolve));
   const newer = controller.selectBranches("other", "feature");
   await new Promise((resolve) => setImmediate(resolve));
   pending.get("other")(summary("other", "feature", 0));
@@ -531,6 +532,8 @@ test("refresh comparison failures use the existing error state", async () => {
 
 test("loads review metadata and switches between commit and All scopes", async () => {
   const requests = [];
+  const fileRequests = [];
+  const panelStates = [];
   const commit = {
     sha: "commit-sha",
     shortSha: "commit-",
@@ -555,8 +558,16 @@ test("loads review metadata and switches between commit and All scopes", async (
         diffHeadRef: input.diffHeadRef ?? input.headRef,
       };
     },
+    async getFileDiff(input) {
+      fileRequests.push(input);
+      return { path: input.path, baseContent: "before", headContent: "after" };
+    },
   };
-  const controller = new SidebarReviewController(backend, () => {});
+  const controller = new SidebarReviewController(
+    backend,
+    () => {},
+    (state) => panelStates.push(state),
+  );
 
   await controller.start(context);
   assert.deepEqual(controller.getState().review.commits, [commit]);
@@ -572,6 +583,29 @@ test("loads review metadata and switches between commit and All scopes", async (
     mergeBase: "abc123",
     diffBaseRef: "parent-sha",
     diffHeadRef: "commit-sha",
+  });
+
+  await controller.selectFile("parent-sha:commit-sha", "file.ts");
+  assert.deepEqual(fileRequests, [
+    {
+      repoRoot: "/repo",
+      baseRef: "parent-sha",
+      headRef: "commit-sha",
+      mergeBase: "abc123",
+      diffBaseRef: "parent-sha",
+      diffHeadRef: "commit-sha",
+      path: "file.ts",
+      status: "modified",
+    },
+  ]);
+  assert.deepEqual(panelStates.at(-1), {
+    status: "ready",
+    comparisonId: "parent-sha:commit-sha",
+    baseRef: "parent-sha",
+    headRef: "commit-sha",
+    path: "file.ts",
+    baseContent: "before",
+    headContent: "after",
   });
 
   await controller.selectCommit(undefined);
@@ -652,4 +686,82 @@ test("prevents a stale commit scope from replacing a newer selection", async () 
 
   assert.equal(controller.getState().selectedCommitSha, "second");
   assert.equal(controller.getState().comparison.id, "first:second");
+});
+
+test("loads merged branch history and switches between merge and commit scopes", async () => {
+  const reviewRequests = [];
+  const comparisonRequests = [];
+  const mergedBranch = {
+    mergeSha: "merge-sha",
+    shortSha: "merge-s",
+    baseSha: "main-before",
+    headSha: "branch-head",
+    name: "IS-013/0",
+    subject: "Merge pull request #16 from owner/IS-013/0",
+  };
+  const commit = {
+    sha: "branch-head",
+    shortSha: "branch-h",
+    parentSha: "branch-parent",
+    subject: "IS-013: finish feature",
+    message: "IS-013: finish feature",
+  };
+  const backend = {
+    async getMergedBranches(repoRoot, baseRef) {
+      assert.deepEqual([repoRoot, baseRef], ["/repo", "main"]);
+      return [mergedBranch];
+    },
+    async getReviewDetails(input) {
+      reviewRequests.push(input);
+      return {
+        mergeBase: input.baseRef === "main-before" ? "main-before" : "abc123",
+        commits: input.headRef === "branch-head" ? [commit] : [],
+        documents: [],
+      };
+    },
+    async getComparisonSummary(input) {
+      comparisonRequests.push(input);
+      return {
+        ...summary(input.baseRef, input.headRef),
+        id: `${input.diffBaseRef ?? input.mergeBase ?? "abc123"}:${input.diffHeadRef ?? input.headRef}`,
+        mergeBase: input.mergeBase ?? "abc123",
+        diffBaseRef: input.diffBaseRef ?? input.mergeBase ?? "abc123",
+        diffHeadRef: input.diffHeadRef ?? input.headRef,
+      };
+    },
+  };
+  const controller = new SidebarReviewController(backend, () => {});
+
+  await controller.start(context);
+  assert.deepEqual(controller.getState().mergedBranches, [mergedBranch]);
+
+  await controller.selectHistory("merge-sha");
+  assert.deepEqual(reviewRequests.at(-1), {
+    repoRoot: "/repo",
+    baseRef: "main-before",
+    headRef: "branch-head",
+  });
+  assert.deepEqual(comparisonRequests.at(-1), {
+    repoRoot: "/repo",
+    baseRef: "main-before",
+    headRef: "merge-sha",
+    mergeBase: "main-before",
+  });
+  assert.equal(controller.getState().selectedHistorySha, "merge-sha");
+  assert.deepEqual(controller.getState().review.commits, [commit]);
+
+  await controller.selectCommit("branch-head");
+  assert.equal(controller.getState().selectedHistorySha, "merge-sha");
+  assert.equal(
+    controller.getState().comparison.id,
+    "branch-parent:branch-head",
+  );
+
+  await controller.selectCommit(undefined);
+  assert.equal(controller.getState().comparison.id, "main-before:merge-sha");
+
+  await controller.selectHistory(undefined);
+  assert.equal(controller.getState().selectedHistorySha, undefined);
+  assert.equal(controller.getState().baseRef, "main");
+  assert.equal(controller.getState().headRef, "feature");
 });

@@ -1,5 +1,6 @@
 import type {
   GitBackend,
+  MergedBranch,
   RepositoryContext,
   ReviewDetails,
 } from "../git/GitBackend";
@@ -11,6 +12,10 @@ export class SidebarReviewController {
   private repositoryContext: RepositoryContext | undefined;
   private requestSequence = 0;
   private diffRequestSequence = 0;
+  private historyRequestSequence = 0;
+  private mergedBranches: MergedBranch[] = [];
+  private normalBaseRef: string | undefined;
+  private normalHeadRef: string | undefined;
 
   public constructor(
     private readonly gitBackend: GitBackend,
@@ -26,6 +31,9 @@ export class SidebarReviewController {
 
   public async start(context: RepositoryContext): Promise<void> {
     this.repositoryContext = context;
+    this.normalBaseRef = context.defaultBase.name;
+    this.normalHeadRef = context.currentBranch.name;
+    if (!(await this.loadHistory(context.defaultBase.name))) return;
     await this.loadComparison(
       context.defaultBase.name,
       context.currentBranch.name,
@@ -33,10 +41,10 @@ export class SidebarReviewController {
   }
 
   public async refresh(context: RepositoryContext): Promise<void> {
-    const previousBase =
-      this.state.status === "idle" ? undefined : this.state.baseRef;
-    const previousHead =
-      this.state.status === "idle" ? undefined : this.state.headRef;
+    const previousHistorySha =
+      this.state.status === "idle" ? undefined : this.state.selectedHistorySha;
+    const previousBase = this.normalBaseRef;
+    const previousHead = this.normalHeadRef;
     const branches = new Set(context.branches.map((branch) => branch.name));
     const canPreserveSelection =
       previousBase !== undefined &&
@@ -45,10 +53,23 @@ export class SidebarReviewController {
       branches.has(previousHead);
 
     this.repositoryContext = context;
-    await this.loadComparison(
-      canPreserveSelection ? previousBase : context.defaultBase.name,
-      canPreserveSelection ? previousHead : context.currentBranch.name,
-    );
+    this.normalBaseRef = canPreserveSelection
+      ? previousBase
+      : context.defaultBase.name;
+    this.normalHeadRef = canPreserveSelection
+      ? previousHead
+      : context.currentBranch.name;
+    if (!(await this.loadHistory(this.normalBaseRef))) return;
+    if (
+      previousHistorySha &&
+      this.mergedBranches.some(
+        (branch) => branch.mergeSha === previousHistorySha,
+      )
+    ) {
+      await this.selectHistory(previousHistorySha);
+      return;
+    }
+    await this.loadComparison(this.normalBaseRef, this.normalHeadRef);
   }
 
   public async selectBranches(baseRef: string, headRef: string): Promise<void> {
@@ -62,7 +83,25 @@ export class SidebarReviewController {
       return;
     }
 
+    this.normalBaseRef = baseRef;
+    this.normalHeadRef = headRef;
+    if (!(await this.loadHistory(baseRef))) return;
     await this.loadComparison(baseRef, headRef);
+  }
+
+  public async selectHistory(mergeSha: string | undefined): Promise<void> {
+    if (!mergeSha) {
+      if (this.normalBaseRef && this.normalHeadRef) {
+        await this.loadComparison(this.normalBaseRef, this.normalHeadRef);
+      }
+      return;
+    }
+
+    const branch = this.mergedBranches.find(
+      (candidate) => candidate.mergeSha === mergeSha,
+    );
+    if (!branch) return;
+    await this.loadHistoricalComparison(branch);
   }
 
   public async selectCommit(sha: string | undefined): Promise<void> {
@@ -81,6 +120,7 @@ export class SidebarReviewController {
       this.state.headRef,
       this.state.review,
       commit?.sha,
+      this.state.selectedHistorySha,
     );
   }
 
@@ -115,8 +155,12 @@ export class SidebarReviewController {
     const request = ++this.diffRequestSequence;
     const selection = {
       comparisonId,
-      baseRef: this.state.baseRef,
-      headRef: this.state.headRef,
+      baseRef: this.state.selectedCommitSha
+        ? this.state.comparison.diffBaseRef
+        : this.state.baseRef,
+      headRef: this.state.selectedCommitSha
+        ? this.state.comparison.diffHeadRef
+        : this.state.headRef,
       path: file.path,
       ...(file.oldPath ? { oldPath: file.oldPath } : {}),
     };
@@ -182,6 +226,8 @@ export class SidebarReviewController {
       headRef,
       review: undefined,
       selectedCommitSha: undefined,
+      mergedBranches: this.mergedBranches,
+      selectedHistorySha: undefined,
     };
     this.state = { status: "loading", ...selection };
     await Promise.all([
@@ -247,11 +293,83 @@ export class SidebarReviewController {
     await this.publish(this.state);
   }
 
+  private async loadHistoricalComparison(branch: MergedBranch): Promise<void> {
+    const context = this.repositoryContext;
+    if (!context) return;
+
+    const request = ++this.requestSequence;
+    this.diffRequestSequence += 1;
+    const selection = {
+      branches: context.branches,
+      baseRef: branch.baseSha,
+      headRef: branch.mergeSha,
+      review: undefined,
+      selectedCommitSha: undefined,
+      mergedBranches: this.mergedBranches,
+      selectedHistorySha: branch.mergeSha,
+    };
+    this.state = { status: "loading", ...selection };
+    await Promise.all([
+      this.publish(this.state),
+      this.publishDiff({
+        status: "noSelection",
+        baseRef: branch.baseSha,
+        headRef: branch.mergeSha,
+      }),
+    ]);
+
+    try {
+      const review = await this.gitBackend.getReviewDetails({
+        repoRoot: context.repository.rootUri.fsPath,
+        baseRef: branch.baseSha,
+        headRef: branch.headSha,
+      });
+      const summary = await this.gitBackend.getComparisonSummary({
+        repoRoot: context.repository.rootUri.fsPath,
+        baseRef: branch.baseSha,
+        headRef: branch.mergeSha,
+        mergeBase: branch.baseSha,
+      });
+      const repositoryFiles = await this.loadRepositoryFiles(
+        context.repository.rootUri.fsPath,
+        branch.mergeSha,
+        summary.files.map((file) => file.path),
+      );
+      if (request !== this.requestSequence) return;
+
+      this.state = {
+        status: "ready",
+        ...selection,
+        review,
+        comparison: {
+          id: summary.id,
+          baseRef: summary.baseRef,
+          headRef: summary.headRef,
+          mergeBase: summary.mergeBase,
+          diffBaseRef: summary.diffBaseRef,
+          diffHeadRef: summary.diffHeadRef,
+          files: summary.files,
+          repositoryFiles,
+          totals: summary.totals,
+        },
+      };
+    } catch (error) {
+      if (request !== this.requestSequence) return;
+      this.state = {
+        status: "error",
+        ...selection,
+        message: error instanceof Error ? error.message : String(error),
+      };
+    }
+    await this.publish(this.state);
+  }
+
   private async loadScope(
     baseRef: string,
     headRef: string,
     review: ReviewDetails,
     selectedCommitSha: string | undefined,
+    selectedHistorySha: string | undefined,
   ): Promise<void> {
     const context = this.repositoryContext;
     if (!context) {
@@ -260,6 +378,10 @@ export class SidebarReviewController {
     const commit = selectedCommitSha
       ? review.commits.find((candidate) => candidate.sha === selectedCommitSha)
       : undefined;
+    const historicalBranch = this.mergedBranches.find(
+      (branch) => branch.mergeSha === selectedHistorySha,
+    );
+    const scopeMergeBase = historicalBranch?.baseSha ?? review.mergeBase;
     const request = ++this.requestSequence;
     this.diffRequestSequence += 1;
     const selection = {
@@ -268,6 +390,8 @@ export class SidebarReviewController {
       headRef,
       review,
       selectedCommitSha,
+      mergedBranches: this.mergedBranches,
+      selectedHistorySha,
     };
     this.state = { status: "loading", ...selection };
     await Promise.all([
@@ -280,7 +404,7 @@ export class SidebarReviewController {
         repoRoot: context.repository.rootUri.fsPath,
         baseRef,
         headRef,
-        mergeBase: review.mergeBase,
+        mergeBase: scopeMergeBase,
         ...(commit
           ? { diffBaseRef: commit.parentSha, diffHeadRef: commit.sha }
           : {}),
@@ -319,6 +443,27 @@ export class SidebarReviewController {
       };
     }
     await this.publish(this.state);
+  }
+
+  private async loadHistory(baseRef: string): Promise<boolean> {
+    const context = this.repositoryContext;
+    if (!context) return false;
+    const request = ++this.historyRequestSequence;
+    const backend = this.gitBackend as GitBackend & {
+      getMergedBranches?: GitBackend["getMergedBranches"];
+    };
+    if (!backend.getMergedBranches) {
+      this.mergedBranches = [];
+      return true;
+    }
+    const branches =
+      (await backend.getMergedBranches(
+        context.repository.rootUri.fsPath,
+        baseRef,
+      )) ?? [];
+    if (request !== this.historyRequestSequence) return false;
+    this.mergedBranches = branches;
+    return true;
   }
 
   private async loadReviewDetails(input: {

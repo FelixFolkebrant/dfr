@@ -41,12 +41,28 @@ export interface ReviewCommit {
   parentSha: string;
   subject: string;
   message: string;
+  filesChanged: number;
+  additions: number;
+  deletions: number;
 }
 
 export interface ReviewDetails {
   mergeBase: string;
   commits: ReviewCommit[];
   documents: string[];
+}
+
+export interface MergedBranch {
+  mergeSha: string;
+  shortSha: string;
+  baseSha: string;
+  headSha: string;
+  name: string;
+  subject: string;
+  title: string;
+  commitCount: number;
+  additions: number;
+  deletions: number;
 }
 
 export interface DiffFileSummary {
@@ -95,6 +111,7 @@ export interface GitBackend {
   getBranches(repository: Repository): Promise<BranchRef[]>;
   getDefaultBase(branches: BranchRef[]): Promise<BranchRef>;
   getRepositoryFiles(repoRoot: string, ref: string): Promise<string[]>;
+  getMergedBranches(repoRoot: string, baseRef: string): Promise<MergedBranch[]>;
   getReviewDetails(input: ComparisonInput): Promise<ReviewDetails>;
   getComparisonSummary(input: ComparisonInput): Promise<ComparisonSummary>;
   getFileDiff(input: FileDiffInput): Promise<FileDiffResult>;

@@ -80,7 +80,7 @@ export function GearIcon() {
   );
 }
 
-export function ArrowIcon({ direction }: { direction: "left" | "right" }) {
+export function HistoryIcon() {
   return (
     <svg
       aria-hidden="true"
@@ -89,7 +89,32 @@ export function ArrowIcon({ direction }: { direction: "left" | "right" }) {
       viewBox="0 0 16 16"
       width="18"
     >
-      <path d={direction === "left" ? "m10 3-5 5 5 5" : "m6 3 5 5-5 5"} />
+      <path d="M3.2 4.1V1.8M3.2 4.1H.9M3.2 4.1A6 6 0 1 1 2 10.5" />
+      <path d="M8 4.5V8l2.4 1.4" />
+    </svg>
+  );
+}
+
+export function ArrowIcon({
+  direction,
+}: {
+  direction: "down" | "left" | "right" | "up";
+}) {
+  const path = {
+    down: "m3 6 5 5 5-5",
+    left: "m10 3-5 5 5 5",
+    right: "m6 3 5 5-5 5",
+    up: "m3 10 5-5 5 5",
+  }[direction];
+  return (
+    <svg
+      aria-hidden="true"
+      className={strokeIcon}
+      height="18"
+      viewBox="0 0 16 16"
+      width="18"
+    >
+      <path d={path} />
     </svg>
   );
 }

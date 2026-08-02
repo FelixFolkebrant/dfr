@@ -3,6 +3,8 @@ import type { SidebarState } from "../../../src/webviews/protocol";
 type ActiveSidebarState = Exclude<SidebarState, { status: "idle" }>;
 
 export function ComparisonStatus({ state }: { state: ActiveSidebarState }) {
+  if (state.status === "ready") return null;
+
   return (
     <section className="min-h-5" aria-live="polite">
       {state.status === "loading" && (
@@ -21,12 +23,11 @@ export function ComparisonStatus({ state }: { state: ActiveSidebarState }) {
           {state.message}
         </p>
       )}
-      {state.status === "ready" && <Summary totals={state.comparison.totals} />}
     </section>
   );
 }
 
-function Summary({
+export function Summary({
   totals,
 }: {
   totals: { files: number; additions: number; deletions: number };
