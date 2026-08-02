@@ -26,10 +26,19 @@ DFR is a focused local review surface for the changes a branch introduces. It br
 
 After the public release, find **DFR** in the VS Code Extensions view and select **Install**.
 
-To test a packaged build before publication:
+To build and install the extension from this checkout:
 
 ```bash
-code --install-extension dfr-0.0.1.vsix
+pnpm install
+pnpm install:local
+```
+
+This requires the VS Code `code` command to be available on your `PATH`. In VS Code, open the Command Palette and run **Shell Command: Install 'code' command in PATH** if it is not available. The command builds `dfr.vsix`, then installs or replaces the local extension. Reload VS Code if it does not appear immediately.
+
+To install an already packaged build manually:
+
+```bash
+code --install-extension dfr.vsix
 ```
 
 ## Review a branch
