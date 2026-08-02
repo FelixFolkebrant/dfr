@@ -49,7 +49,6 @@ export interface ReviewCommit {
 export interface ReviewDetails {
   mergeBase: string;
   commits: ReviewCommit[];
-  documents: string[];
 }
 
 export interface MergedBranch {

@@ -169,13 +169,7 @@ function Review({
           No commits were introduced by this branch.
         </p>
       )}
-      <DetailsSections
-        documents={state.review?.documents ?? []}
-        onOpenDocument={(path) =>
-          vscode.postMessage({ type: "openDocument", path })
-        }
-        selectedCommit={selectedCommit}
-      />
+      <DetailsSections selectedCommit={selectedCommit} />
       <ComparisonStatus state={state} />
       <ChangedFilesSection
         directoryDisplay={directoryDisplay}

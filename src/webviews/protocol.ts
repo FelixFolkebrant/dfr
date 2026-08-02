@@ -48,7 +48,6 @@ export type SidebarToExtensionMessage =
   | { type: "selectBranches"; baseRef: string; headRef: string }
   | { type: "selectCommit"; sha?: string }
   | { type: "selectHistory"; mergeSha?: string }
-  | { type: "openDocument"; path: string }
   | { type: "selectFile"; comparisonId: string; path: string };
 
 export function isSidebarMessage(
@@ -74,9 +73,6 @@ export function isSidebarMessage(
   }
   if (message.type === "selectHistory") {
     return !("mergeSha" in message) || typeof message.mergeSha === "string";
-  }
-  if (message.type === "openDocument") {
-    return "path" in message && typeof message.path === "string";
   }
   return (
     message.type === "selectBranches" &&

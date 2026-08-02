@@ -25,28 +25,18 @@ export class DiffService {
     const mergeBase = await this.findMergeBase(input);
 
     try {
-      const [log, trackedFiles] = await Promise.all([
-        this.gitRunner.run(input.repoRoot, [
-          "log",
-          "--reverse",
-          "--topo-order",
-          "--format=%x1e%H%x1f%h%x1f%P%x1f%s%x1f%B%x1f",
-          "--numstat",
-          `${mergeBase}..${input.headRef}`,
-        ]),
-        this.gitRunner.run(input.repoRoot, ["ls-files", "-z"]),
+      const log = await this.gitRunner.run(input.repoRoot, [
+        "log",
+        "--reverse",
+        "--topo-order",
+        "--format=%x1e%H%x1f%h%x1f%P%x1f%s%x1f%B%x1f",
+        "--numstat",
+        `${mergeBase}..${input.headRef}`,
       ]);
       const commits = parseCommitLog(log.stdout);
       return {
         mergeBase,
         commits,
-        documents: findRelatedDocuments(
-          input.headRef,
-          commits,
-          nulTokens(trackedFiles.stdout).filter((path) =>
-            /\.md(?:own)?$/i.test(path),
-          ),
-        ),
       };
     } catch (error) {
       throw new Error(
@@ -211,69 +201,6 @@ function parseCommitNumstat(output: string): {
     },
     { filesChanged: 0, additions: 0, deletions: 0 },
   );
-}
-
-interface IssueKey {
-  namespace: string;
-  number: number;
-}
-
-const issueKeyPattern =
-  /(?:^|[^A-Za-z0-9])(?:#(0*\d+)|([A-Za-z][A-Za-z0-9]*)[-_](0*\d+))(?=$|[^A-Za-z0-9])/g;
-const filenameIssueKeyPattern =
-  /^(?:#(0*\d+)|([A-Za-z][A-Za-z0-9]*)[-_](0*\d+))(?=$|[-_. ])/;
-
-export function extractIssueKeys(value: string): IssueKey[] {
-  return Array.from(value.matchAll(issueKeyPattern), (match) => ({
-    namespace: match[1] === undefined ? (match[2] ?? "").toUpperCase() : "#",
-    number: Number.parseInt(match[1] ?? match[3] ?? "", 10),
-  })).filter(({ number }) => Number.isSafeInteger(number));
-}
-
-export function findRelatedDocuments(
-  branch: string,
-  commits: Pick<ReviewCommit, "subject">[],
-  paths: string[],
-): string[] {
-  const candidates = uniqueIssueKeys([
-    ...extractIssueKeys(branch),
-    ...commits.flatMap(({ subject }) => extractIssueKeys(subject)),
-  ]);
-  if (candidates.length === 0) {
-    return [];
-  }
-
-  return paths
-    .filter((path) => {
-      const basename = path.split("/").at(-1) ?? path;
-      const match = basename.match(filenameIssueKeyPattern);
-      if (!match) {
-        return false;
-      }
-      const key = {
-        namespace:
-          match[1] === undefined ? (match[2] ?? "").toUpperCase() : "#",
-        number: Number.parseInt(match[1] ?? match[3] ?? "", 10),
-      };
-      return candidates.some(
-        (candidate) =>
-          candidate.namespace === key.namespace &&
-          candidate.number === key.number,
-      );
-    })
-    .sort((left, right) => left.localeCompare(right));
-}
-
-function uniqueIssueKeys(keys: IssueKey[]): IssueKey[] {
-  const seen = new Set<string>();
-  return keys.filter((key) => {
-    const canonical = `${key.namespace}:${key.number}`;
-    if (seen.has(canonical)) {
-      return false;
-    }
-    seen.add(canonical);
-    return true;
-  });
 }
 
 export function combineDiffOutput(
