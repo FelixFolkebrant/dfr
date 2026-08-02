@@ -90,11 +90,12 @@
     "clean": "rm -rf dist",
     "format": "biome format --write .",
     "lint": "biome check .",
+    "package": "pnpm build && vsce package --no-dependencies --out dfr.vsix",
+    "install:local": "pnpm package && code --install-extension dfr.vsix --force",
     "test": "pnpm build:extension && node --test tests/*.test.cjs",
     "typecheck": "pnpm typecheck:extension && pnpm typecheck:webview",
     "typecheck:extension": "tsc -p tsconfig.json --noEmit",
-    "typecheck:webview": "tsc -p tsconfig.webview.json --noEmit",
-    "vscode:prepublish": "pnpm build"
+    "typecheck:webview": "tsc -p tsconfig.webview.json --noEmit"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.1",
