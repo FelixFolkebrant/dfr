@@ -1,20 +1,26 @@
 # DFR
 
-Pronounced *Differ*, but just like the extension, a little better.
+A pull-request-style Git branch diff viewer.
 
-DFR is a focused local review surface for the changes a branch introduces. It brings a pull-request-style file and commit workflow into VS Code without creating a pull request or leaving the editor.
-
-![Reviewing a commit with DFR](media/screenshots/review-overview.png)
+![DFR branch review overview](media/screenshots/overview.png)
 
 ## Features
 
-- Compare any local or remote branch with another branch using merge-base semantics.
-- Review the whole branch or step through individual commits.
-- Browse branches merged into the comparison base and step through each merge or its commits.
-- See changed files, status, additions, and deletions in tree, flattened, or contextual views.
-- Open selected files in VS Code's native diff editor.
-- Open Markdown issue and documentation files associated with the review.
-- Copy the selected commit hash and choose how commit names are displayed.
+### GitHub- and GitLab-style pull-request reviews
+
+> I wanted to review local commits and branches in the style of GitHub and GitLab merge-request overviews. This extension does exactly that.
+
+- Line-by-line diffs
+- Clear marking of deleted and created files
+- Commit-by-commit branch review
+- Easy copying of the inspected commit's hash
+- *Added:* A History view that lets you step through previously merged pull requests as though they were currently under review
+
+### Contextual explorer view
+
+> Reviewing changed code in pull requests can make it easy to lose track of where you are in the codebase. The contextual view shows where changed files sit within the repository as a whole.
+
+<img src="media/screenshots/tree-view.png" alt="Changed files grouped as a tree" width="220"> <img src="media/screenshots/collapsed-view.png" alt="Changed files with collapsed directory paths" width="220"> <img src="media/screenshots/contextual-view.png" alt="Changed files in the surrounding repository structure" width="220">
 
 ## Requirements
 
@@ -25,7 +31,7 @@ DFR is a focused local review surface for the changes a branch introduces. It br
 
 ## Installation
 
-After the public release, find **DFR** in the VS Code Extensions view and select **Install**.
+The extension is not currently published to the extension store.
 
 To build and install the extension from this checkout:
 
@@ -35,45 +41,3 @@ pnpm install:local
 ```
 
 This requires the VS Code `code` command to be available on your `PATH`. In VS Code, open the Command Palette and run **Shell Command: Install 'code' command in PATH** if it is not available. The command builds `dfr.vsix`, then installs or replaces the local extension. Reload VS Code if it does not appear immediately.
-
-To install an already packaged build manually:
-
-```bash
-code --install-extension dfr.vsix
-```
-
-## Review a branch
-
-1. Open a Git repository in VS Code and check out the branch you want to review.
-2. Select **DFR** in the Activity Bar. DFR compares the current branch with the configured base branch, or the first available branch from `main`, `master`, `origin/main`, and `origin/master`.
-3. Use the scope dropdown to review **All** changes or select an individual commit. The arrow buttons step through commits.
-4. Select the History button to choose a branch merged into the comparison base. Use the history arrows to move between merges, or use the commit controls to inspect that merged branch commit by commit.
-5. Select the settings button to change the review branch, comparison branch, or commit naming.
-6. Choose tree, flattened, or contextual file display.
-7. Select a changed file to open its diff in VS Code's native diff editor.
-8. Use **DFR: Refresh** from the Command Palette or the sidebar title to reload repository state.
-
-## File views
-
-The tree view groups changed files by directory. The flattened view collapses directory paths. The contextual view shows changed files within the surrounding repository structure.
-
-<img src="media/screenshots/tree-view.png" alt="Changed files grouped as a tree" width="220"> <img src="media/screenshots/collapsed-view.png" alt="Changed files with collapsed directory paths" width="220"> <img src="media/screenshots/contextual-view.png" alt="Changed files in the surrounding repository structure" width="220">
-
-## Settings
-
-| Setting | Default | Description |
-| --- | --- | --- |
-| `branchDiffReview.defaultBaseBranch` | Empty | Preferred comparison branch. DFR falls back to `main`, `master`, `origin/main`, then `origin/master` when the configured branch is empty or unavailable. |
-
-## Known limitations
-
-- DFR supports Git repositories only and requires a named local branch; detached `HEAD` is not supported.
-- DFR is a desktop/workspace extension and does not run in browser-only VS Code environments.
-- Binary files are identified but cannot be rendered in the text diff editor.
-- DFR reviews committed branch history. It does not create pull requests, post comments, stage changes, or resolve conflicts.
-- History lists first-parent merge commits. Squash-merged and rebased branches do not retain a branch boundary for DFR to list.
-- In multi-repository workspaces, DFR uses the repository containing the active editor or asks you to select one when starting or refreshing.
-
-## License
-
-[MIT](LICENSE)
