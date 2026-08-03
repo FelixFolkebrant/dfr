@@ -46,6 +46,9 @@ export function HistoryNavigation({
           className="flex min-h-9 min-w-0 flex-1 cursor-pointer items-center gap-2 rounded-[4px] border-0 bg-transparent px-1.5 py-0.5 text-left text-[var(--vscode-sideBar-foreground)] hover:bg-[var(--vscode-list-hoverBackground)] focus-visible:bg-[var(--vscode-list-hoverBackground)] focus-visible:outline-none disabled:cursor-default disabled:opacity-50"
           disabled={disabled || branches.length === 0}
           onClick={() => setOpen((current) => !current)}
+          onPointerDown={(event) => {
+            if (open) event.preventDefault();
+          }}
           ref={triggerRef}
           type="button"
         >

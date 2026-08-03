@@ -1,4 +1,4 @@
-import * as vscode from "vscode";
+import type * as vscode from "vscode";
 
 import type { GitBackend, RepositoryContext } from "./git/GitBackend";
 import type { NativeDiffState } from "./panel";
@@ -14,7 +14,6 @@ export class BranchDiffSidebarProvider implements vscode.WebviewViewProvider {
 
   private webview: vscode.Webview | undefined;
   private readonly controller: SidebarReviewController;
-  private repository: RepositoryContext["repository"] | undefined;
 
   constructor(
     private readonly extensionUri: vscode.Uri,
@@ -51,12 +50,10 @@ export class BranchDiffSidebarProvider implements vscode.WebviewViewProvider {
   }
 
   public async startReview(context: RepositoryContext): Promise<void> {
-    this.repository = context.repository;
     await this.controller.start(context);
   }
 
   public async refreshReview(context: RepositoryContext): Promise<void> {
-    this.repository = context.repository;
     await this.controller.refresh(context);
   }
 
@@ -82,17 +79,6 @@ export class BranchDiffSidebarProvider implements vscode.WebviewViewProvider {
 
     if (message.type === "selectHistory") {
       await this.controller.selectHistory(message.mergeSha);
-      return;
-    }
-
-    if (message.type === "openDocument") {
-      if (this.repository && this.controller.hasDocument(message.path)) {
-        const uri = vscode.Uri.joinPath(
-          this.repository.rootUri,
-          ...message.path.split("/"),
-        );
-        await vscode.window.showTextDocument(uri, { preview: true });
-      }
       return;
     }
 

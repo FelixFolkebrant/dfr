@@ -41,34 +41,16 @@ export class SidebarReviewController {
   }
 
   public async refresh(context: RepositoryContext): Promise<void> {
-    const previousHistorySha =
-      this.state.status === "idle" ? undefined : this.state.selectedHistorySha;
     const previousBase = this.normalBaseRef;
-    const previousHead = this.normalHeadRef;
     const branches = new Set(context.branches.map((branch) => branch.name));
-    const canPreserveSelection =
-      previousBase !== undefined &&
-      previousHead !== undefined &&
-      branches.has(previousBase) &&
-      branches.has(previousHead);
 
     this.repositoryContext = context;
-    this.normalBaseRef = canPreserveSelection
-      ? previousBase
-      : context.defaultBase.name;
-    this.normalHeadRef = canPreserveSelection
-      ? previousHead
-      : context.currentBranch.name;
+    this.normalBaseRef =
+      previousBase && branches.has(previousBase)
+        ? previousBase
+        : context.defaultBase.name;
+    this.normalHeadRef = context.currentBranch.name;
     if (!(await this.loadHistory(this.normalBaseRef))) return;
-    if (
-      previousHistorySha &&
-      this.mergedBranches.some(
-        (branch) => branch.mergeSha === previousHistorySha,
-      )
-    ) {
-      await this.selectHistory(previousHistorySha);
-      return;
-    }
     await this.loadComparison(this.normalBaseRef, this.normalHeadRef);
   }
 
@@ -121,13 +103,6 @@ export class SidebarReviewController {
       this.state.review,
       commit?.sha,
       this.state.selectedHistorySha,
-    );
-  }
-
-  public hasDocument(path: string): boolean {
-    return (
-      this.state.status !== "idle" &&
-      Boolean(this.state.review?.documents.includes(path))
     );
   }
 
@@ -259,7 +234,6 @@ export class SidebarReviewController {
       const resolvedReview = review ?? {
         mergeBase: summary.mergeBase,
         commits: [],
-        documents: [],
       };
 
       this.state = {

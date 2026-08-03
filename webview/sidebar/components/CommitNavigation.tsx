@@ -1,7 +1,7 @@
-import { useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import type { MergedBranch, ReviewCommit } from "../../../src/git/GitBackend";
 import { HistoryNavigation } from "./HistoryNavigation";
-import { ArrowIcon, CopyIcon, GearIcon, HistoryIcon } from "./Icons";
+import { ArrowIcon, CheckIcon, CopyIcon, GearIcon, HistoryIcon } from "./Icons";
 import { SelectDropdown, useDismissOnOutsidePointer } from "./SelectDropdown";
 
 interface CommitNavigationProps {
@@ -48,8 +48,19 @@ export function CommitNavigation({
   const id = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const copiedTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(
+    undefined,
+  );
   const [open, setOpen] = useState(false);
+  const [copied, setCopied] = useState(false);
   useDismissOnOutsidePointer(rootRef, open, setOpen);
+
+  useEffect(
+    () => () => {
+      clearTimeout(copiedTimeout.current);
+    },
+    [],
+  );
 
   const close = (restoreFocus: boolean) => {
     setOpen(false);
@@ -91,6 +102,9 @@ export function CommitNavigation({
               className="peer absolute inset-0 w-full cursor-pointer rounded-[4px] border-0 bg-transparent focus-visible:bg-[var(--vscode-list-hoverBackground)] focus-visible:outline-none disabled:cursor-progress disabled:opacity-65"
               disabled={disabled}
               onClick={() => setOpen((current) => !current)}
+              onPointerDown={(event) => {
+                if (open) event.preventDefault();
+              }}
               ref={triggerRef}
               type="button"
             />
@@ -195,16 +209,20 @@ export function CommitNavigation({
           <HistoryIcon />
         </button>
         <button
-          aria-label="Copy hash"
+          aria-label={copied ? "Copied hash" : "Copy hash"}
           className="grid size-8 cursor-pointer place-items-center rounded-[5px] border-0 bg-transparent text-[var(--vscode-icon-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:outline-none disabled:cursor-default disabled:opacity-35"
           disabled={!selected}
-          onClick={() => {
-            if (selected) void navigator.clipboard.writeText(selected.sha);
+          onClick={async () => {
+            if (!selected) return;
+            await navigator.clipboard.writeText(selected.sha);
+            setCopied(true);
+            clearTimeout(copiedTimeout.current);
+            copiedTimeout.current = setTimeout(() => setCopied(false), 1000);
           }}
-          title="Copy hash"
+          title={copied ? "Copied hash" : "Copy hash"}
           type="button"
         >
-          <CopyIcon />
+          {copied ? <CheckIcon /> : <CopyIcon />}
         </button>
         <button
           aria-label={

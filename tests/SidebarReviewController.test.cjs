@@ -345,7 +345,7 @@ test("ignores stale comparisons and paths outside the active summary", async () 
   assert.equal(publishCount, 2);
 });
 
-test("refresh preserves selected refs when both still exist", async () => {
+test("refresh resets the review branch to the current branch", async () => {
   const requests = [];
   const refreshedBranches = [
     { name: "next", kind: "local", current: true },
@@ -371,12 +371,12 @@ test("refresh preserves selected refs when both still exist", async () => {
   assert.deepEqual(requests.at(-1), {
     repoRoot: "/repo",
     baseRef: "other",
-    headRef: "feature",
+    headRef: "next",
   });
   assert.equal(controller.getState().branches, refreshedBranches);
 });
 
-test("refresh resets both refs when either selected ref is missing", async () => {
+test("refresh uses the current branch and falls back when the comparison base is unavailable", async () => {
   const requests = [];
   const missingHeadBranches = [
     { name: "next", kind: "local", current: true },
@@ -403,7 +403,7 @@ test("refresh resets both refs when either selected ref is missing", async () =>
 
   assert.deepEqual(requests.at(-1), {
     repoRoot: "/repo",
-    baseRef: "develop",
+    baseRef: "other",
     headRef: "next",
   });
 
@@ -546,7 +546,6 @@ test("loads review metadata and switches between commit and All scopes", async (
       return {
         mergeBase: "abc123",
         commits: [commit],
-        documents: ["docs/IS-010.md"],
       };
     },
     async getComparisonSummary(input) {
@@ -571,7 +570,6 @@ test("loads review metadata and switches between commit and All scopes", async (
 
   await controller.start(context);
   assert.deepEqual(controller.getState().review.commits, [commit]);
-  assert.equal(controller.hasDocument("docs/IS-010.md"), true);
 
   await controller.selectCommit("commit-sha");
   assert.equal(controller.getState().selectedCommitSha, "commit-sha");
@@ -613,11 +611,11 @@ test("loads review metadata and switches between commit and All scopes", async (
   assert.equal(controller.getState().comparison.id, "abc123:feature");
 });
 
-test("ignores commit and document requests outside review metadata", async () => {
+test("ignores commit requests outside review metadata", async () => {
   let comparisons = 0;
   const backend = {
     async getReviewDetails() {
-      return { mergeBase: "abc123", commits: [], documents: [] };
+      return { mergeBase: "abc123", commits: [] };
     },
     async getComparisonSummary(input) {
       comparisons += 1;
@@ -630,7 +628,6 @@ test("ignores commit and document requests outside review metadata", async () =>
   await controller.selectCommit("unknown");
 
   assert.equal(comparisons, 1);
-  assert.equal(controller.hasDocument("docs/IS-010.md"), false);
 });
 
 test("prevents a stale commit scope from replacing a newer selection", async () => {
@@ -653,7 +650,7 @@ test("prevents a stale commit scope from replacing a newer selection", async () 
   ];
   const backend = {
     async getReviewDetails() {
-      return { mergeBase: "base", commits, documents: [] };
+      return { mergeBase: "base", commits };
     },
     getComparisonSummary(input) {
       if (!input.diffHeadRef) {
@@ -716,7 +713,6 @@ test("loads merged branch history and switches between merge and commit scopes",
       return {
         mergeBase: input.baseRef === "main-before" ? "main-before" : "abc123",
         commits: input.headRef === "branch-head" ? [commit] : [],
-        documents: [],
       };
     },
     async getComparisonSummary(input) {
@@ -761,6 +757,12 @@ test("loads merged branch history and switches between merge and commit scopes",
   assert.equal(controller.getState().comparison.id, "main-before:merge-sha");
 
   await controller.selectHistory(undefined);
+  assert.equal(controller.getState().selectedHistorySha, undefined);
+  assert.equal(controller.getState().baseRef, "main");
+  assert.equal(controller.getState().headRef, "feature");
+
+  await controller.selectHistory("merge-sha");
+  await controller.refresh(context);
   assert.equal(controller.getState().selectedHistorySha, undefined);
   assert.equal(controller.getState().baseRef, "main");
   assert.equal(controller.getState().headRef, "feature");

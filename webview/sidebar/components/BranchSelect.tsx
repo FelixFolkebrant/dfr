@@ -70,6 +70,9 @@ export function BranchSelect({
             setOpen(true);
           }
         }}
+        onPointerDown={(event) => {
+          if (open) event.preventDefault();
+        }}
         ref={triggerRef}
         role="combobox"
         type="button"

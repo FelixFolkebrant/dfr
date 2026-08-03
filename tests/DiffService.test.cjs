@@ -4,8 +4,6 @@ const { test } = require("node:test");
 const {
   DiffService,
   combineDiffOutput,
-  extractIssueKeys,
-  findRelatedDocuments,
   parseCommitLog,
   parseNameStatus,
 } = require("../dist/git/DiffService.js");
@@ -262,31 +260,7 @@ test("parses oldest-first commit metadata", () => {
   ]);
 });
 
-test("normalizes issue keys without crossing namespaces", () => {
-  assert.deepEqual(extractIssueKeys("user/GH-001/work for #02 and gl_3"), [
-    { namespace: "GH", number: 1 },
-    { namespace: "#", number: 2 },
-    { namespace: "GL", number: 3 },
-  ]);
-
-  assert.deepEqual(
-    findRelatedDocuments(
-      "user/GH-1/work",
-      [{ subject: "Also addresses #2" }, { subject: "GL-003: follow-up" }],
-      [
-        "docs/GH-001-PLAN.md",
-        "docs/GH-10.md",
-        "docs/GL-003.md",
-        "docs/IS-001.md",
-        "notes/#002.review.markdown",
-        "notes/random-GH-1.md",
-      ],
-    ),
-    ["docs/GH-001-PLAN.md", "docs/GL-003.md", "notes/#002.review.markdown"],
-  );
-});
-
-test("loads review commits and matching tracked Markdown documents", async () => {
+test("loads review commits without inspecting tracked documents", async () => {
   const calls = [];
   const runner = {
     async run(_cwd, args) {
@@ -301,10 +275,7 @@ test("loads review commits and matching tracked Markdown documents", async () =>
           stderr: "",
         };
       }
-      return {
-        stdout: "docs/GH-1-PLAN.md\0docs/GL-001.md\0src/file.ts\0",
-        stderr: "",
-      };
+      throw new Error(`Unexpected Git command: ${args[0]}`);
     },
   };
 
@@ -324,10 +295,8 @@ test("loads review commits and matching tracked Markdown documents", async () =>
     },
     { filesChanged: 1, additions: 2, deletions: 1 },
   );
-  assert.deepEqual(details.documents, ["docs/GH-1-PLAN.md"]);
   assert.deepEqual(calls[1].slice(0, 3), ["log", "--reverse", "--topo-order"]);
   assert.equal(calls[1].includes("--numstat"), true);
-  assert.deepEqual(calls[2], ["ls-files", "-z"]);
 });
 
 test("uses an explicit parent-to-commit range", async () => {
