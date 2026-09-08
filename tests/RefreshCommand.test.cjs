@@ -35,6 +35,10 @@ test("starts review automatically and contributes refresh", async () => {
     extensionSource,
     /void discoverAndRun\(gitBackend, "start",[\s\S]*sidebarProvider\.startReview/,
   );
+  assert.match(
+    extensionSource,
+    /registerWebviewViewProvider\([\s\S]*retainContextWhenHidden: true/,
+  );
   assert.equal(
     packageJson.contributes.commands.some(
       (command) => command.command === "branchDiffReview.open",

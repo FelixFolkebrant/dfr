@@ -14,6 +14,10 @@ import type {
 } from "./GitBackend";
 import { GitRunner } from "./GitRunner";
 import { parseMergedBranches } from "./history";
+import {
+  type InitializingGitApi,
+  waitForGitInitialization,
+} from "./waitForGitInitialization";
 
 interface GitRef {
   name?: string;
@@ -28,7 +32,7 @@ interface NativeRepository {
   };
 }
 
-interface GitApi {
+interface GitApi extends InitializingGitApi {
   repositories: NativeRepository[];
 }
 
@@ -225,7 +229,9 @@ export class NativeGitBackend implements GitBackend {
     const gitExtension = extension.isActive
       ? extension.exports
       : await extension.activate();
-    return gitExtension.getAPI(1);
+    const api = gitExtension.getAPI(1);
+    await waitForGitInitialization(api);
+    return api;
   }
 
   private async findRepository(

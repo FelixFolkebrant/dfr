@@ -34,6 +34,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.window.registerWebviewViewProvider(
       BranchDiffSidebarProvider.viewId,
       sidebarProvider,
+      { webviewOptions: { retainContextWhenHidden: true } },
     ),
     vscode.commands.registerCommand(refreshCommand, () =>
       discoverAndRun(gitBackend, "refresh", (repositoryContext) =>
