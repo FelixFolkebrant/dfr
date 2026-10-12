@@ -55,7 +55,7 @@ export function Sidebar() {
   }
 
   return (
-    <main className="flex h-full min-w-0 flex-col gap-3.5 overflow-hidden bg-[var(--vscode-sideBar-background)] px-3 pt-3.5 pb-3 text-[length:var(--vscode-font-size)] text-[var(--vscode-sideBar-foreground)] [color-scheme:light_dark] [font-family:var(--vscode-font-family)]">
+    <main className="flex h-full min-w-0 flex-col gap-2 overflow-hidden bg-[var(--vscode-sideBar-background)] px-3 pt-1.5 pb-3 text-[length:var(--vscode-font-size)] text-[var(--vscode-sideBar-foreground)] [color-scheme:light_dark] [font-family:var(--vscode-font-family)]">
       <CommitNavigation
         allChangesTitle={
           state.mergedBranches.find(
@@ -163,7 +163,7 @@ function Review({
     (commit) => commit.sha === state.selectedCommitSha,
   );
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3.5">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2">
       {state.review && state.review.commits.length === 0 && (
         <p className="px-[3px] py-[7px] text-[11px] leading-[1.45] text-[var(--vscode-descriptionForeground)]">
           No commits were introduced by this branch.
@@ -185,7 +185,7 @@ function Review({
 
 function SidebarEmptyState() {
   return (
-    <main className="flex min-h-screen min-w-0 flex-col gap-3.5 bg-[var(--vscode-sideBar-background)] px-3 pt-3.5 pb-5 text-[length:var(--vscode-font-size)] text-[var(--vscode-sideBar-foreground)] [color-scheme:light_dark] [font-family:var(--vscode-font-family)]">
+    <main className="flex min-h-screen min-w-0 flex-col gap-2 bg-[var(--vscode-sideBar-background)] px-3 pt-1.5 pb-5 text-[length:var(--vscode-font-size)] text-[var(--vscode-sideBar-foreground)] [color-scheme:light_dark] [font-family:var(--vscode-font-family)]">
       <section className="grid gap-2 p-3" aria-live="polite">
         <h1 className="text-sm">Branch changes</h1>
         <p className="text-[var(--vscode-descriptionForeground)]">
