@@ -4,6 +4,7 @@ import { getRepositoryContext } from "./git/getRepositoryContext";
 import { NativeGitBackend } from "./git/NativeGitBackend";
 import { NativeDiffView } from "./panel";
 import { BranchDiffSidebarProvider } from "./sidebar";
+import type { SidebarAction } from "./webviews/protocol";
 
 const refreshCommand = "branchDiffReview.refresh";
 
@@ -30,6 +31,25 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   context.subscriptions.push(
+    ...(
+      [
+        "previousCommit",
+        "nextCommit",
+        "toggleHistory",
+        "copyHash",
+        "toggleSettings",
+      ] satisfies SidebarAction[]
+    ).map((action) =>
+      vscode.commands.registerCommand(`branchDiffReview.${action}`, () =>
+        sidebarProvider.runAction(action),
+      ),
+    ),
+    vscode.commands.registerCommand("branchDiffReview.closeHistory", () =>
+      sidebarProvider.runAction("toggleHistory"),
+    ),
+    vscode.commands.registerCommand("branchDiffReview.closeSettings", () =>
+      sidebarProvider.runAction("toggleSettings"),
+    ),
     diffView,
     vscode.window.registerWebviewViewProvider(
       BranchDiffSidebarProvider.viewId,

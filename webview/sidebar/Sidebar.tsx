@@ -50,6 +50,35 @@ export function Sidebar() {
     }
   }, [openSettingsAfterHistory, state]);
 
+  useEffect(() => {
+    const receiveAction = (event: MessageEvent<ExtensionToSidebarMessage>) => {
+      if (event.data.type !== "action" || state.status === "idle") return;
+      if (event.data.action === "toggleHistory") {
+        setHistoryOpen(!historyOpen);
+        if (historyOpen && state.selectedHistorySha) {
+          vscode.postMessage({ type: "selectHistory" });
+        }
+        setSettingsOpen(false);
+        setOpenSettingsAfterHistory(false);
+      } else {
+        setHistoryOpen(false);
+        if (state.selectedHistorySha) {
+          setSettingsOpen(false);
+          setOpenSettingsAfterHistory(true);
+          vscode.postMessage({ type: "selectHistory" });
+        } else {
+          setSettingsOpen((open) => !open);
+        }
+      }
+    };
+    window.addEventListener("message", receiveAction);
+    return () => window.removeEventListener("message", receiveAction);
+  }, [historyOpen, state]);
+
+  useEffect(() => {
+    vscode.postMessage({ type: "toolbarState", historyOpen, settingsOpen });
+  }, [historyOpen, settingsOpen]);
+
   if (state.status === "idle") {
     return <SidebarEmptyState />;
   }
@@ -80,27 +109,8 @@ export function Sidebar() {
               : { type: "selectHistory" },
           );
         }}
-        onHistoryToggle={() => {
-          setHistoryOpen(!historyOpen);
-          if (historyOpen && state.selectedHistorySha) {
-            vscode.postMessage({ type: "selectHistory" });
-          }
-          setSettingsOpen(false);
-          setOpenSettingsAfterHistory(false);
-        }}
-        onSettingsToggle={() => {
-          setHistoryOpen(false);
-          if (state.selectedHistorySha) {
-            setSettingsOpen(false);
-            setOpenSettingsAfterHistory(true);
-            vscode.postMessage({ type: "selectHistory" });
-          } else {
-            setSettingsOpen((open) => !open);
-          }
-        }}
         selectedHistorySha={state.selectedHistorySha}
         selectedSha={state.selectedCommitSha}
-        settingsOpen={settingsOpen}
         totals={state.status === "ready" ? state.comparison.totals : undefined}
       />
       {settingsOpen ? (

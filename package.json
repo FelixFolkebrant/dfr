@@ -52,6 +52,55 @@
         "title": "DFR: Refresh",
         "category": "DFR",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "branchDiffReview.previousCommit",
+        "title": "DFR: Previous commit",
+        "category": "DFR",
+        "icon": "$(arrow-left)",
+        "enablement": "branchDiffReview.canNavigate"
+      },
+      {
+        "command": "branchDiffReview.nextCommit",
+        "title": "DFR: Next commit",
+        "category": "DFR",
+        "icon": "$(arrow-right)",
+        "enablement": "branchDiffReview.canNavigate"
+      },
+      {
+        "command": "branchDiffReview.toggleHistory",
+        "title": "DFR: Open history",
+        "category": "DFR",
+        "icon": "$(history)",
+        "enablement": "branchDiffReview.sidebarReady"
+      },
+      {
+        "command": "branchDiffReview.copyHash",
+        "title": "DFR: Copy hash",
+        "category": "DFR",
+        "icon": "$(copy)",
+        "enablement": "branchDiffReview.canCopyHash"
+      },
+      {
+        "command": "branchDiffReview.toggleSettings",
+        "title": "DFR: Open comparison settings",
+        "category": "DFR",
+        "icon": "$(gear)",
+        "enablement": "branchDiffReview.sidebarReady"
+      },
+      {
+        "command": "branchDiffReview.closeHistory",
+        "title": "DFR: Close history",
+        "category": "DFR",
+        "icon": "$(close)",
+        "enablement": "branchDiffReview.sidebarReady"
+      },
+      {
+        "command": "branchDiffReview.closeSettings",
+        "title": "DFR: Close comparison settings",
+        "category": "DFR",
+        "icon": "$(close)",
+        "enablement": "branchDiffReview.sidebarReady"
       }
     ],
     "menus": {
@@ -60,6 +109,71 @@
           "command": "branchDiffReview.refresh",
           "when": "view == branchDiffReview.sidebar",
           "group": "navigation"
+        },
+        {
+          "command": "branchDiffReview.previousCommit",
+          "when": "view == branchDiffReview.sidebar",
+          "group": "navigation@1"
+        },
+        {
+          "command": "branchDiffReview.nextCommit",
+          "when": "view == branchDiffReview.sidebar",
+          "group": "navigation@2"
+        },
+        {
+          "command": "branchDiffReview.toggleHistory",
+          "when": "view == branchDiffReview.sidebar && !branchDiffReview.historyOpen",
+          "group": "navigation@3"
+        },
+        {
+          "command": "branchDiffReview.copyHash",
+          "when": "view == branchDiffReview.sidebar",
+          "group": "navigation@4"
+        },
+        {
+          "command": "branchDiffReview.toggleSettings",
+          "when": "view == branchDiffReview.sidebar && !branchDiffReview.settingsOpen",
+          "group": "navigation@5"
+        },
+        {
+          "command": "branchDiffReview.closeHistory",
+          "when": "view == branchDiffReview.sidebar && branchDiffReview.historyOpen",
+          "group": "navigation@3"
+        },
+        {
+          "command": "branchDiffReview.closeSettings",
+          "when": "view == branchDiffReview.sidebar && branchDiffReview.settingsOpen",
+          "group": "navigation@5"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "branchDiffReview.previousCommit",
+          "when": "view == branchDiffReview.sidebar"
+        },
+        {
+          "command": "branchDiffReview.nextCommit",
+          "when": "view == branchDiffReview.sidebar"
+        },
+        {
+          "command": "branchDiffReview.toggleHistory",
+          "when": "view == branchDiffReview.sidebar && !branchDiffReview.historyOpen"
+        },
+        {
+          "command": "branchDiffReview.copyHash",
+          "when": "view == branchDiffReview.sidebar"
+        },
+        {
+          "command": "branchDiffReview.toggleSettings",
+          "when": "view == branchDiffReview.sidebar && !branchDiffReview.settingsOpen"
+        },
+        {
+          "command": "branchDiffReview.closeHistory",
+          "when": "view == branchDiffReview.sidebar && branchDiffReview.historyOpen"
+        },
+        {
+          "command": "branchDiffReview.closeSettings",
+          "when": "view == branchDiffReview.sidebar && branchDiffReview.settingsOpen"
         }
       ]
     },

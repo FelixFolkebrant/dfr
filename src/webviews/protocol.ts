@@ -38,13 +38,20 @@ export type SidebarState =
     } & SidebarSelection)
   | ({ status: "error"; message: string } & SidebarSelection);
 
-export type ExtensionToSidebarMessage = {
-  type: "state";
-  state: SidebarState;
-};
+export type SidebarAction =
+  | "previousCommit"
+  | "nextCommit"
+  | "toggleHistory"
+  | "copyHash"
+  | "toggleSettings";
+
+export type ExtensionToSidebarMessage =
+  | { type: "state"; state: SidebarState }
+  | { type: "action"; action: "toggleHistory" | "toggleSettings" };
 
 export type SidebarToExtensionMessage =
   | { type: "ready" }
+  | { type: "toolbarState"; historyOpen: boolean; settingsOpen: boolean }
   | { type: "selectBranches"; baseRef: string; headRef: string }
   | { type: "selectCommit"; sha?: string }
   | { type: "selectHistory"; mergeSha?: string }
@@ -59,6 +66,14 @@ export function isSidebarMessage(
 
   if (message.type === "ready") {
     return true;
+  }
+  if (message.type === "toolbarState") {
+    return (
+      "historyOpen" in message &&
+      typeof message.historyOpen === "boolean" &&
+      "settingsOpen" in message &&
+      typeof message.settingsOpen === "boolean"
+    );
   }
   if (message.type === "selectFile") {
     return (
