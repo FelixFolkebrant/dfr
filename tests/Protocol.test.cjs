@@ -6,6 +6,7 @@ const { isSidebarMessage } = require("../dist/webviews/protocol.js");
 test("validates sidebar review messages", () => {
   const valid = [
     { type: "ready" },
+    { type: "toolbarState", historyOpen: true, settingsOpen: false },
     { type: "selectCommit" },
     { type: "selectCommit", sha: "abc123" },
     { type: "selectHistory" },
@@ -16,6 +17,8 @@ test("validates sidebar review messages", () => {
   const invalid = [
     undefined,
     {},
+    { type: "toolbarState", historyOpen: true },
+    { type: "toolbarState", historyOpen: "true", settingsOpen: false },
     { type: "selectCommit", sha: 123 },
     { type: "selectHistory", mergeSha: 123 },
     { type: "selectBranches", baseRef: "main" },

@@ -1,7 +1,6 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 import type { MergedBranch, ReviewCommit } from "../../../src/git/GitBackend";
 import { HistoryNavigation } from "./HistoryNavigation";
-import { ArrowIcon, CheckIcon, CopyIcon, GearIcon, HistoryIcon } from "./Icons";
 import { SelectDropdown, useDismissOnOutsidePointer } from "./SelectDropdown";
 
 interface CommitNavigationProps {
@@ -13,11 +12,8 @@ interface CommitNavigationProps {
   historyOpen: boolean;
   onChange(sha: string | undefined): void;
   onHistoryChange(mergeSha: string | undefined): void;
-  onHistoryToggle(): void;
-  onSettingsToggle(): void;
   selectedHistorySha: string | undefined;
   selectedSha: string | undefined;
-  settingsOpen: boolean;
   totals?: { files: number; additions: number; deletions: number };
 }
 
@@ -30,11 +26,8 @@ export function CommitNavigation({
   historyOpen,
   onChange,
   onHistoryChange,
-  onHistoryToggle,
-  onSettingsToggle,
   selectedHistorySha,
   selectedSha,
-  settingsOpen,
   totals,
 }: CommitNavigationProps) {
   const index = commits.findIndex((commit) => commit.sha === selectedSha);
@@ -48,19 +41,8 @@ export function CommitNavigation({
   const id = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
-  const copiedTimeout = useRef<ReturnType<typeof setTimeout> | undefined>(
-    undefined,
-  );
   const [open, setOpen] = useState(false);
-  const [copied, setCopied] = useState(false);
   useDismissOnOutsidePointer(rootRef, open, setOpen);
-
-  useEffect(
-    () => () => {
-      clearTimeout(copiedTimeout.current);
-    },
-    [],
-  );
 
   const close = (restoreFocus: boolean) => {
     setOpen(false);
@@ -163,82 +145,6 @@ export function CommitNavigation({
           )}
         </div>
       </section>
-      <div className="mt-1 flex min-w-0 items-center justify-end gap-0.5">
-        <button
-          aria-label="Previous commit"
-          className="grid size-8 cursor-pointer place-items-center rounded-[5px] border-0 bg-transparent text-[var(--vscode-icon-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:outline-none disabled:cursor-default disabled:opacity-35"
-          disabled={disabled || commits.length === 0}
-          onClick={() =>
-            onChange(
-              selected && index > 0
-                ? commits[index - 1]?.sha
-                : selected
-                  ? undefined
-                  : commits.at(-1)?.sha,
-            )
-          }
-          type="button"
-        >
-          <ArrowIcon direction="left" />
-        </button>
-        <button
-          aria-label="Next commit"
-          className="grid size-8 cursor-pointer place-items-center rounded-[5px] border-0 bg-transparent text-[var(--vscode-icon-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:outline-none disabled:cursor-default disabled:opacity-35"
-          disabled={disabled || commits.length === 0}
-          onClick={() =>
-            onChange(
-              selected && index < commits.length - 1
-                ? commits[index + 1]?.sha
-                : selected
-                  ? undefined
-                  : commits[0]?.sha,
-            )
-          }
-          type="button"
-        >
-          <ArrowIcon direction="right" />
-        </button>
-        <button
-          aria-label={historyOpen ? "Close history" : "Open history"}
-          aria-pressed={historyOpen}
-          className="grid size-8 cursor-pointer place-items-center rounded-[5px] border-0 bg-transparent text-[var(--vscode-icon-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:outline-none aria-pressed:bg-[var(--vscode-toolbar-hoverBackground)]"
-          onClick={onHistoryToggle}
-          title="History"
-          type="button"
-        >
-          <HistoryIcon />
-        </button>
-        <button
-          aria-label={copied ? "Copied hash" : "Copy hash"}
-          className="grid size-8 cursor-pointer place-items-center rounded-[5px] border-0 bg-transparent text-[var(--vscode-icon-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:outline-none disabled:cursor-default disabled:opacity-35"
-          disabled={!selected}
-          onClick={async () => {
-            if (!selected) return;
-            await navigator.clipboard.writeText(selected.sha);
-            setCopied(true);
-            clearTimeout(copiedTimeout.current);
-            copiedTimeout.current = setTimeout(() => setCopied(false), 1000);
-          }}
-          title={copied ? "Copied hash" : "Copy hash"}
-          type="button"
-        >
-          {copied ? <CheckIcon /> : <CopyIcon />}
-        </button>
-        <button
-          aria-label={
-            settingsOpen
-              ? "Close comparison settings"
-              : "Open comparison settings"
-          }
-          aria-pressed={settingsOpen}
-          className="grid size-8 cursor-pointer place-items-center rounded-[5px] border-0 bg-transparent text-[var(--vscode-icon-foreground)] hover:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:bg-[var(--vscode-toolbar-hoverBackground)] focus-visible:outline-none aria-pressed:bg-[var(--vscode-toolbar-hoverBackground)]"
-          onClick={onSettingsToggle}
-          title="Comparison settings"
-          type="button"
-        >
-          <GearIcon />
-        </button>
-      </div>
     </nav>
   );
 }
