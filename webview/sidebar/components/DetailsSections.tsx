@@ -9,6 +9,8 @@ interface DetailsSectionsProps {
 export function DetailsSections({ selectedCommit }: DetailsSectionsProps) {
   const [messageOpen, setMessageOpen] = useState(true);
 
+  if (!selectedCommit) return null;
+
   return (
     <div className="grid">
       {selectedCommit && (
