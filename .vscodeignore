@@ -10,6 +10,7 @@ scripts/**
 node_modules/**
 .gitignore
 AGENTS.md
+README.md
 apm.yml
 apm.lock.yaml
 biome.json

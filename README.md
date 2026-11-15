@@ -1,43 +1,33 @@
-# DFR
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="media/screenshots/banner-dark.png">
+  <img src="media/screenshots/banner-light.png" alt="DFR — Git branch reviews in VS Code, with commit selection, merged branch history, file changes, and line-by-line diffs." width="100%">
+</picture>
 
-A pull-request-style Git branch diff viewer.
-
-![DFR branch review overview](media/screenshots/overview.png)
+<p align="center">
+  <a href="#features">Features</a> · <a href="#installation">Installation</a> · <a href="docs/CONTRIBUTING.md">Contributing</a> · <a href="LICENSE">MIT license</a>
+</p>
 
 ## Features
 
-### GitHub- and GitLab-style pull-request reviews
+- Review local branches in VS Code's diff editor, with additions, deletions, and per-file change counts.
+- See all branch changes or step through individual commits. Copy the inspected commit's hash from the toolbar.
+- Revisit merged branches in the History view and review their commits and diffs.
+- Switch between tree, flattened, and contextual file views to see changes within the repository.
 
-> I wanted to review local commits and branches in the style of GitHub and GitLab merge-request overviews. This extension does exactly that.
-
-- Line-by-line diffs
-- Clear marking of deleted and created files
-- Commit-by-commit branch review
-- Easy copying of the inspected commit's hash
-- *Added:* A History view that lets you step through previously merged pull requests as though they were currently under review
-
-### Contextual explorer view
-
-> Reviewing changed code in pull requests can make it easy to lose track of where you are in the codebase. The contextual view shows where changed files sit within the repository as a whole.
-
-<img src="media/screenshots/tree-view.png" alt="Changed files grouped as a tree" width="220"> <img src="media/screenshots/collapsed-view.png" alt="Changed files with collapsed directory paths" width="220"> <img src="media/screenshots/contextual-view.png" alt="Changed files in the surrounding repository structure" width="220">
-
-## Requirements
-
-- VS Code 1.85.0 or newer on desktop.
-- Git installed and available on `PATH`.
-- An open Git repository on a local branch.
-- VS Code's built-in Git extension enabled.
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="media/screenshots/file-views-dark.png">
+  <img src="media/screenshots/file-views-light.png" alt="DFR's current file views: Tree groups changed files by folder; Flattened compacts directory paths; Contextual shows changed files alongside the surrounding codebase." width="100%">
+</picture>
 
 ## Installation
 
-The extension is not currently published to the extension store.
-
-To build and install the extension from this checkout:
+DFR isn't published to the Marketplace yet. Build and install from this checkout:
 
 ```bash
 pnpm install
 pnpm install:local
 ```
 
-This requires the VS Code `code` command to be available on your `PATH`. In VS Code, open the Command Palette and run **Shell Command: Install 'code' command in PATH** if it is not available. The command builds `dfr.vsix`, then installs or replaces the local extension. Reload VS Code if it does not appear immediately.
+Requires **VS Code 1.85+ on desktop**, with **`git` and `code` on your PATH**. The install command builds `dfr.vsix` and installs or replaces the local extension. Reload VS Code, open a local Git repository on a branch, and select **DFR** in the activity bar. VS Code's built-in Git extension must be enabled.
+
+If `code` is missing, run **Shell Command: Install 'code' command in PATH** from VS Code's Command Palette.
