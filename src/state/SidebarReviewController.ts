@@ -7,8 +7,10 @@ import type {
 import type { NativeDiffState } from "../panel";
 import type { SidebarState } from "../webviews/protocol";
 
+type ReviewState = Exclude<SidebarState, { status: "noRepository" }>;
+
 export class SidebarReviewController {
-  private state: SidebarState = { status: "idle" };
+  private state: ReviewState = { status: "idle" };
   private repositoryContext: RepositoryContext | undefined;
   private requestSequence = 0;
   private diffRequestSequence = 0;
@@ -25,7 +27,7 @@ export class SidebarReviewController {
     ) => void | Promise<void> = () => {},
   ) {}
 
-  public getState(): SidebarState {
+  public getState(): ReviewState {
     return this.state;
   }
 

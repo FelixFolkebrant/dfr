@@ -16,12 +16,16 @@ export class BranchDiffSidebarProvider implements vscode.WebviewViewProvider {
 
   private webview: vscode.Webview | undefined;
   private webviewReady = false;
+  private noRepository: string[] | undefined;
   private readonly controller: SidebarReviewController;
 
   constructor(
     private readonly extensionUri: vscode.Uri,
     gitBackend: GitBackend,
     publishDiff: (state: NativeDiffState) => void | Promise<void>,
+    private readonly selectRepository: (
+      path: string,
+    ) => void | Promise<void> = () => {},
   ) {
     this.controller = new SidebarReviewController(
       gitBackend,
@@ -58,16 +62,24 @@ export class BranchDiffSidebarProvider implements vscode.WebviewViewProvider {
   }
 
   public async startReview(context: RepositoryContext): Promise<void> {
+    this.noRepository = undefined;
     await this.controller.start(context);
   }
 
   public async refreshReview(context: RepositoryContext): Promise<void> {
+    this.noRepository = undefined;
     await this.controller.refresh(context);
+  }
+
+  public async showNoRepository(repositories: string[] = []): Promise<void> {
+    this.noRepository = repositories;
+    await this.publishState(this.controller.getState());
   }
 
   public async runAction(action: SidebarAction): Promise<void> {
     const state = this.controller.getState();
-    if (!this.webviewReady || state.status === "idle") return;
+    if (!this.webviewReady || this.noRepository || state.status === "idle")
+      return;
 
     if (action === "toggleHistory" || action === "toggleSettings") {
       await this.webview?.postMessage({
@@ -102,7 +114,8 @@ export class BranchDiffSidebarProvider implements vscode.WebviewViewProvider {
 
   private async updateToolbarContext(): Promise<void> {
     const state = this.controller.getState();
-    const ready = this.webviewReady && state.status !== "idle";
+    const ready =
+      this.webviewReady && !this.noRepository && state.status !== "idle";
     await Promise.all([
       vscode.commands.executeCommand(
         "setContext",
@@ -151,6 +164,13 @@ export class BranchDiffSidebarProvider implements vscode.WebviewViewProvider {
       return;
     }
 
+    if (message.type === "selectRepository") {
+      if (this.noRepository?.includes(message.path)) {
+        await this.selectRepository(message.path);
+      }
+      return;
+    }
+
     if (message.type === "toolbarState") {
       await this.setToolbarState(message.historyOpen, message.settingsOpen);
       return;
@@ -182,7 +202,9 @@ export class BranchDiffSidebarProvider implements vscode.WebviewViewProvider {
     await this.updateToolbarContext();
     const message: ExtensionToSidebarMessage = {
       type: "state",
-      state,
+      state: this.noRepository
+        ? { status: "noRepository", repositories: this.noRepository }
+        : state,
     };
     await this.webview?.postMessage(message);
   }

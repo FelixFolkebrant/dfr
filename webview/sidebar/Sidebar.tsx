@@ -43,6 +43,7 @@ export function Sidebar() {
     if (
       openSettingsAfterHistory &&
       state.status !== "idle" &&
+      state.status !== "noRepository" &&
       !state.selectedHistorySha
     ) {
       setOpenSettingsAfterHistory(false);
@@ -52,7 +53,12 @@ export function Sidebar() {
 
   useEffect(() => {
     const receiveAction = (event: MessageEvent<ExtensionToSidebarMessage>) => {
-      if (event.data.type !== "action" || state.status === "idle") return;
+      if (
+        event.data.type !== "action" ||
+        state.status === "idle" ||
+        state.status === "noRepository"
+      )
+        return;
       if (event.data.action === "toggleHistory") {
         setHistoryOpen(!historyOpen);
         if (historyOpen && state.selectedHistorySha) {
@@ -79,8 +85,14 @@ export function Sidebar() {
     vscode.postMessage({ type: "toolbarState", historyOpen, settingsOpen });
   }, [historyOpen, settingsOpen]);
 
-  if (state.status === "idle") {
-    return <SidebarEmptyState />;
+  if (state.status === "idle" || state.status === "noRepository") {
+    return (
+      <SidebarEmptyState
+        repositories={
+          state.status === "noRepository" ? state.repositories : undefined
+        }
+      />
+    );
   }
 
   return (
@@ -167,7 +179,7 @@ function Review({
 }: {
   directoryDisplay: DirectoryDisplay;
   onDirectoryDisplayChange(value: DirectoryDisplay): void;
-  state: Exclude<SidebarState, { status: "idle" }>;
+  state: Exclude<SidebarState, { status: "idle" | "noRepository" }>;
 }) {
   const selectedCommit = state.review?.commits.find(
     (commit) => commit.sha === state.selectedCommitSha,
@@ -193,14 +205,38 @@ function Review({
   );
 }
 
-function SidebarEmptyState() {
+function SidebarEmptyState({ repositories }: { repositories?: string[] }) {
   return (
     <main className="flex min-h-screen min-w-0 flex-col gap-2 bg-[var(--vscode-sideBar-background)] px-3 pt-1.5 pb-5 text-[length:var(--vscode-font-size)] text-[var(--vscode-sideBar-foreground)] [color-scheme:light_dark] [font-family:var(--vscode-font-family)]">
       <section className="grid gap-2 p-3" aria-live="polite">
-        <h1 className="text-sm">Branch changes</h1>
-        <p className="text-[var(--vscode-descriptionForeground)]">
-          Loading branch comparison…
-        </p>
+        {repositories ? (
+          <>
+            <h1 className="text-sm">
+              {repositories.length
+                ? "No repo initialized in parent folder"
+                : "No repo initialized"}
+            </h1>
+            <p className="text-[var(--vscode-descriptionForeground)]">
+              {repositories.length
+                ? "Initialize a repo and reload, or pick a nested repo:"
+                : "Initialize a repo and reload."}
+            </p>
+            {repositories.map((path) => (
+              <button
+                className="cursor-pointer text-left text-[var(--vscode-textLink-foreground)] hover:underline focus-visible:outline focus-visible:outline-1 focus-visible:outline-[var(--vscode-focusBorder)]"
+                key={path}
+                onClick={() =>
+                  vscode.postMessage({ type: "selectRepository", path })
+                }
+                type="button"
+              >
+                {path}
+              </button>
+            ))}
+          </>
+        ) : (
+          <h1 className="text-sm">Branch changes</h1>
+        )}
       </section>
     </main>
   );

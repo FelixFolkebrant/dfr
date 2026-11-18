@@ -30,6 +30,7 @@ interface SidebarSelection {
 
 export type SidebarState =
   | { status: "idle" }
+  | { status: "noRepository"; repositories: string[] }
   | ({ status: "loading" } & SidebarSelection)
   | ({
       status: "ready";
@@ -51,6 +52,7 @@ export type ExtensionToSidebarMessage =
 
 export type SidebarToExtensionMessage =
   | { type: "ready" }
+  | { type: "selectRepository"; path: string }
   | { type: "toolbarState"; historyOpen: boolean; settingsOpen: boolean }
   | { type: "selectBranches"; baseRef: string; headRef: string }
   | { type: "selectCommit"; sha?: string }
@@ -66,6 +68,9 @@ export function isSidebarMessage(
 
   if (message.type === "ready") {
     return true;
+  }
+  if (message.type === "selectRepository") {
+    return "path" in message && typeof message.path === "string";
   }
   if (message.type === "toolbarState") {
     return (

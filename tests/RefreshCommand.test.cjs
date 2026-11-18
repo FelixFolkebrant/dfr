@@ -29,12 +29,9 @@ test("starts review automatically and contributes refresh", async () => {
   });
   assert.match(
     extensionSource,
-    /registerCommand\(refreshCommand,[\s\S]*sidebarProvider\.refreshReview/,
+    /registerCommand\(refreshCommand, \(\) => discover\("refresh"\)\)/,
   );
-  assert.match(
-    extensionSource,
-    /void discoverAndRun\(gitBackend, "start",[\s\S]*sidebarProvider\.startReview/,
-  );
+  assert.match(extensionSource, /void discover\("start"\)/);
   assert.match(
     extensionSource,
     /registerWebviewViewProvider\([\s\S]*retainContextWhenHidden: true/,
