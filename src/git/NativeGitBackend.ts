@@ -1,3 +1,4 @@
+import { realpath } from "node:fs/promises";
 import * as vscode from "vscode";
 
 import { DiffService } from "./DiffService";
@@ -34,6 +35,7 @@ interface NativeRepository {
 
 interface GitApi extends InitializingGitApi {
   repositories: NativeRepository[];
+  openRepository(uri: vscode.Uri): Promise<NativeRepository | null>;
 }
 
 interface GitExtension {
@@ -57,6 +59,63 @@ export class NativeGitBackend implements GitBackend {
     return (await this.getApi()).repositories.map(({ rootUri }) => ({
       rootUri,
     }));
+  }
+
+  public async findNestedRepositories(): Promise<Repository[]> {
+    const found: Repository[] = [];
+    const scan = async (
+      directory: vscode.Uri,
+      isRoot: boolean,
+    ): Promise<void> => {
+      const entries = await vscode.workspace.fs.readDirectory(directory);
+      if (
+        !isRoot &&
+        entries.some(([name]) => name === ".git") &&
+        (await this.isRepositoryRoot(directory))
+      ) {
+        found.push({ rootUri: directory });
+      }
+      for (const [name, type] of entries) {
+        if (name === ".git" || type !== vscode.FileType.Directory) continue;
+        await scan(vscode.Uri.joinPath(directory, name), false);
+      }
+    };
+    for (const folder of vscode.workspace.workspaceFolders ?? []) {
+      await scan(folder.uri, true);
+    }
+    return found.sort((a, b) =>
+      a.rootUri.toString().localeCompare(b.rootUri.toString()),
+    );
+  }
+
+  public async isRepositoryRoot(uri: vscode.Uri): Promise<boolean> {
+    try {
+      const { stdout } = await this.gitRunner.run(uri.fsPath, [
+        "rev-parse",
+        "--show-toplevel",
+      ]);
+      const [root, candidate] = await Promise.all([
+        realpath(stdout.trim()),
+        realpath(uri.fsPath),
+      ]);
+      return root === candidate;
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        /not a git repository|invalid gitfile format/i.test(error.message)
+      ) {
+        return false;
+      }
+      throw error;
+    }
+  }
+
+  public async openRepository(repository: Repository): Promise<void> {
+    if (!(await (await this.getApi()).openRepository(repository.rootUri))) {
+      throw new Error(
+        `Could not open Git repository: ${repository.rootUri.fsPath}`,
+      );
+    }
   }
 
   public async chooseRepository(
